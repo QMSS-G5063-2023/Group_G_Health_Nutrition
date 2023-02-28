@@ -4,7 +4,7 @@ Health and Nutrition Data in the United States
 Brief description:
 
 
-**##Group Members:**
+**Group Members:**
 
 **Moises Escobar**
 me2801@columbia.edu
