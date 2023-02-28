@@ -1,6 +1,7 @@
 # Group G: Health and Nutrition Data in the United States
 
 **Brief description:**
+
 Our group hopes to use the skills developed from this Data Visualization course to focus a narrative pertaining to the health and nutrition data in the United States. We intend to explore and visually represent: 
 1. Explore the current state of health and nutrition in the United States (comparisons by state, race, etc)
 2. Analyze how the trend has changed across time (time-series)
