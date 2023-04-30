@@ -1,0 +1,624 @@
+---
+title: "Final Project Visualization"
+author: "Justin Ko"
+date: "2023-04-19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Visualization #1:
+Justin - Interactive Geospatial map of fast food locations across the United States or in a given state / city (e.g., NYC)
+Data: Fast Food Restaurants Across America | Kaggle
+https://www.kaggle.com/datasets/datafiniti/fast-food-restaurants
+
+
+```{r}
+library(leaflet)
+library(dplyr)
+library(readr)
+library(leaflet.extras)
+library(sf)
+
+# Import dataset
+FastFoodRestaurants <- read_csv("/Users/justin/Downloads/US_Fast_Food_Restaurants - Sheet1.csv")
+
+# Filter data by specific state (e.g., New York) and latitude and longitude bounds
+FastFoodRestaurants_NY <- FastFoodRestaurants %>% 
+  filter(province == "NY" & 
+         latitude >= 40.0 & latitude <= 41.0 &
+         longitude >= -75.5 & longitude <= -73.5) %>%
+ mutate(name = ifelse(name == "SUBWAY", "Subway", name))
+
+# Define a color palette based on the unique restaurant names
+color_palette <- colorFactor(palette = "viridis", domain = unique(FastFoodRestaurants_NY$name))
+
+# Set the image URLs to the hosted images
+mcdonalds_logo_url <- "https://upload.wikimedia.org/wikipedia/commons/5/50/McDonald%27s_SVG_logo.svg"
+subway_logo_url <- "https://1000logos.net/wp-content/uploads/2017/06/Subway-logo.png"
+dunkin_donuts_logo_url <- "https://i.pinimg.com/originals/5a/f4/2b/5af42b2e31010a24ac46d2cb5a0e60a6.png"
+burger_king_logo_url <- "https://upload.wikimedia.org/wikipedia/commons/8/85/Burger_King_logo_%281999%29.svg"
+taco_bell_logo_url <- "https://1000logos.net/wp-content/uploads/2017/06/Taco-Bell-Logo-1024x640.png"
+kfc_logo_url <- "https://1000logos.net/wp-content/uploads/2017/03/Kfc_logo-768x432.png"
+# Set the image URLs for the new restaurants
+boston_market_logo_url <- "https://cdn.freebiesupply.com/logos/large/2x/boston-market-2-logo-png-transparent.png"
+fuku_logo_url <- "https://eatfuku.com/wp-content/themes/fuku-3/images/logo.svg"
+dominos_pizza_logo_url <- "https://1000logos.net/wp-content/uploads/2023/04/Dominos-logo.png"
+baskin_robbins_logo_url <- "https://upload.wikimedia.org/wikipedia/commons/thumb/9/97/Baskin-Robbins_logo_2022.svg/2880px-Baskin-Robbins_logo_2022.svg.png"
+panera_bread_logo_url <- "https://logos-download.com/wp-content/uploads/2016/11/Panera_Bread_logo_symbol.png"
+wendys_logo_url <- "https://www.mashed.com/img/gallery/dont-believe-this-myth-about-the-wendys-logo/intro-1611697081.jpg"
+chipotle_mexican_grill_logo_url <- "https://upload.wikimedia.org/wikipedia/en/thumb/3/3b/Chipotle_Mexican_Grill_logo.svg/1200px-Chipotle_Mexican_Grill_logo.svg.png"
+little_caesars_pizza_logo_url <- "https://www.gaylordmichigan.net/wp-content/uploads/2017/06/Untitled-design-2023-03-22T114407.307.png"
+popeyes_logo_url <- "https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/Popeyes_logo.svg/1200px-Popeyes_logo.svg.png"
+five_guys_logo_url <- "https://dynl.mktgcdn.com/p/FIoFKEm46-afGyd-Yl2FKX-ma356Q63KQxQ-4kDqcng/1001x1001.png"
+sbarro_logo_url <- "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ef/Sbarro_logo.svg/1200px-Sbarro_logo.svg.png"
+git_it_n_git_logo_url <- "https://media-cdn.grubhub.com/image/upload/d_search:browse-images:default.jpg/w_80,q_80,fl_lossy,dpr_2.0,c_fit,f_auto,h_80/w8jzu4c4zofnvdof6ssi"
+b_good_logo_url <- "https://mma.prnewswire.com/media/558745/BGOOD_Logo.jpg?p=twitter"
+thirty_first_avenue_gyro_logo_url <- "https://media-cdn.grubhub.com/image/upload/d_search:browse-images:default.jpg/w_80,q_80,fl_lossy,dpr_2.0,c_fit,f_auto,h_80/wopcjumnf4dvzvyj8tej"
+arbys_logo_url <- "https://upload.wikimedia.org/wikipedia/commons/f/f4/Arby%27s_logo.svg"
+smashburger_logo_url <- "https://nmgprod.s3.amazonaws.com/media/files/79/8e/798ee36529dc2cdc121456549c0b0051/cover_image_1617194867.png.760x400_q85_crop_upscale.png"
+white_castle_logo_url <- "https://logodownload.org/wp-content/uploads/2021/05/white-castle-logo.png"
+kennedy_fried_chicken_pizza_logo_url <- "https://media-cdn.grubhub.com/image/upload/d_search:browse-images:default.jpg/w_300,q_100,fl_lossy,dpr_2.0,c_fit,f_auto,h_300/iu3ttxzx4yppjmzszpct"
+dairy_queen_logo_url <- "https://cdn.lovesavingsgroup.com/logos/dq.png"
+blimpie_logo_url <- "https://searchvectorlogo.com/wp-content/uploads/2021/02/blimpie-americas-sub-shop-logo-vector.png"
+nathans_famous_logo_url <- "https://mms.businesswire.com/media/20221214005201/en/1663867/5/Nathan%27s_Famous_Logos-27.jpg"
+pizza_hut_logo_url <- "https://upload.wikimedia.org/wikipedia/sco/thumb/d/d2/Pizza_Hut_logo.svg/2177px-Pizza_Hut_logo.svg.png"
+wendys_logo_url <- "https://www.clipartmax.com/png/middle/157-1572782_wendys-wendys-logo-png.png"
+papa_johns_logo_url <- "https://cdn.freebiesupply.com/logos/large/2x/papa-johns-pizza-1-logo-svg-vector.svg"
+westchester_burger_logo_url <- "https://www.westchesterburger.com/stamford/images/logo.png"
+
+
+# Define a function to conditionally display the logos
+conditional_logo <- function(restaurant_name) {
+  if (restaurant_name == "McDonald's") {
+    return(paste0('<img src="', mcdonalds_logo_url, '" width="100px" height="100px">'))
+  } else if (restaurant_name == "Subway") {
+    return(paste0('<img src="', subway_logo_url, '" width="100px" height="100px">'))
+  } else if (restaurant_name == "Dunkin' Donuts") {
+    return(paste0('<img src="', dunkin_donuts_logo_url, '" width="90px" height="100px">'))
+  } else if (restaurant_name == "Burger King") {
+    return(paste0('<img src="', burger_king_logo_url, '" width="100px" height="100px">'))
+  } else if (restaurant_name == "Taco Bell") {
+    return(paste0('<img src="', taco_bell_logo_url, '" width="100px" height="100px">'))
+  } else if (restaurant_name == "KFC") {
+    return(paste0('<img src="', kfc_logo_url, '" width="140px" height="100px">'))
+  } else if (restaurant_name == "Boston Market") {
+    return(paste0('<img src="', boston_market_logo_url, '" width="100px" height="100px">'))
+  } else if (restaurant_name == "Fuku") {
+    return(paste0('<img src="', fuku_logo_url, '" width="100px" height="100px">'))
+  } else if (restaurant_name == "Domino's Pizza") {
+    return(paste0('<img src="', dominos_pizza_logo_url, '" width="100px" height="100px">'))
+  } else if (restaurant_name == "Baskin-Robbins") {
+    return(paste0('<img src="', baskin_robbins_logo_url, '" width="100px" height="100px">'))
+  } else if (restaurant_name == "Panera Bread") {
+    return(paste0('<img src="', panera_bread_logo_url, '" width="100px" height="100px">'))
+  } else if (restaurant_name == "Wendy's") {
+    return(paste0('<img src="', wendys_logo_url, '" width="100px" height="100px">'))
+  } else if (restaurant_name == "Westchester Burger Company") {
+    return(paste0('<img src="', westchester_burger_logo_url, '" width="100px" height="100px">'))
+  } else if (restaurant_name == "Papa John's Pizza") {
+    return(paste0('<img src="', papa_johns_logo_url, '" width="100px" height="100px">'))
+  } else if (restaurant_name == "Chipotle Mexican Grill") {
+    return(paste0('<img src="', chipotle_mexican_grill_logo_url, '" width="100px" height="100px">'))
+  } else if (restaurant_name == "Little Caesars Pizza") {
+    return(paste0('<img src"', little_caesars_pizza_logo_url, '" width="100px" height="100px">'))
+  } else if (restaurant_name == "Popeyes") {
+    return(paste0('<img src="', popeyes_logo_url, '" width="100px" height="100px">'))
+  } else if (restaurant_name == "Five Guys") {
+    return(paste0('<img src="', five_guys_logo_url, '" width="100px" height="100px">'))
+  } else if (restaurant_name == "Sbarro") {
+    return(paste0('<img src="', sbarro_logo_url, '" width="100px" height="100px">'))
+  } else if (restaurant_name == "Git-It-N-Git") {
+    return(paste0('<img src="', git_it_n_git_logo_url, '" width="100px" height="100px">'))
+  } else if (restaurant_name == "B. Good") {
+    return(paste0('<img src="', b_good_logo_url, '" width="100px" height="100px">'))
+  } else if (restaurant_name == "31st Avenue Gyro") {
+    return(paste0('<img src="', thirty_first_avenue_gyro_logo_url, '" width="100px" height="100px">'))
+  } else if (restaurant_name == "Arby's") {
+    return(paste0('<img src="', arbys_logo_url, '" width="100px" height="100px">'))
+  } else if (restaurant_name == "Smashburger") {
+    return(paste0('<img src="', smashburger_logo_url, '" width="100px" height="100px">'))
+  } else if (restaurant_name == "White Castle") {
+    return(paste0('<img src="', white_castle_logo_url, '" width="100px" height="100px">'))
+  } else if (restaurant_name == "Kennedy Fried Chicken & Pizza") {
+    return(paste0('<img src="', kennedy_fried_chicken_pizza_logo_url, '" width="100px" height="100px">'))
+  } else if (restaurant_name == "Dairy Queen") {
+    return(paste0('<img src="', dairy_queen_logo_url, '" width="100px" height="100px">'))
+  } else if (restaurant_name == "Blimpie") {
+    return(paste0('<img src="', blimpie_logo_url, '" width="100px" height="100px">'))
+  } else if (restaurant_name == "Nathan's Famous") {
+    return(paste0('<img src="', nathans_famous_logo_url, '" width="100px" height="100px">'))
+  } else if (restaurant_name == "Pizza Hut") {
+    return(paste0('<img src="', pizza_hut_logo_url, '" width="100px" height="100px">'))
+  } else if (restaurant_name == "Wendy's") {
+    return(paste0('<img src="', wendys_logo_url, '" width="410" height="100px">'))
+  } else {
+    return("")
+  }
+}
+
+
+# Create Leaflet map with marker cluster option
+FastFoodRestaurants_NY_map <- leaflet(FastFoodRestaurants_NY) %>%
+  addTiles() %>%
+  addAwesomeMarkers(lng = ~longitude, lat = ~latitude,
+                    icon = ~awesomeIcons(
+                      icon = 'star',  # Choose an icon shape
+                      library = 'fa', # Choose an icon library
+                      markerColor = color_palette(FastFoodRestaurants_NY$name) # Set marker color based on "name" column
+                    ),
+                    popup = paste("Name:", FastFoodRestaurants_NY$name, "<br>",
+                                  "Address:", FastFoodRestaurants_NY$address, "<br>",
+                                  "City:", FastFoodRestaurants_NY$city, "<br>",
+                                  "Province:", FastFoodRestaurants_NY$province, "<br>",
+                                  "Postal Code:", FastFoodRestaurants_NY$postalCode, "<br>",
+                                  sapply(FastFoodRestaurants_NY$name, conditional_logo)), # Add hosted image to the popup
+                    clusterOptions = markerClusterOptions()) %>%
+  setView(lng = -74.0060, lat = 40.7128, zoom = 10)  # Set initial map view to the center of New York City
+
+# Display the map
+FastFoodRestaurants_NY_map
+
+
+```
+
+Visualization #2:
+Justin - Bar Chart with fitted line / Line chart: highlight the trend or rise of health fads and dietary options: vegan/vegetarianism, paleo, intermittent fasting, etc
+
+Data source: https://www.cdc.gov/nchs/products/databriefs/db389.htm
+
+Data for Percentage of adults aged 20 and over on
+any special diet on a given day, by sex and age: United States,
+2015–2018
+
+```{r}
+library(RColorBrewer)
+library(plotly)
+
+diet_data <- data.frame(
+  SurveyPeriod = c("2007–2008", "2009–2010", "2011–2012", "2013–2014", "2015–2016", "2017–2018"),
+  AnySpecialDiet = c(14.3, 14.9, 14.4, 17, 16.5, 17.4),
+  WeightLossDiet = c(7.5, 8.8, 8.8, 9.2, 8.7, 10),
+  DiabeticDiet = c(1.8, 2.4, 1.9, 2, 2.1, 2.2),
+  LowCarbDiet = c(0.9, 0.9, 0.9, 1.5, 1.7, 2.2),
+  LowFatDiet = c(2.7, 1.9, 1.6, 2.1, 1.9, 1.5)
+)
+
+plot <- plot_ly(data = diet_data, x = ~SurveyPeriod, y = ~AnySpecialDiet, type = "scatter", mode = "lines+markers", name = "Any Special Diet", line = list(color = "blue"))
+plot <- plot %>% add_trace(y = ~WeightLossDiet, name = "Weight Loss or Low Calorie Diet", line = list(color = "red"))
+plot <- plot %>% add_trace(y = ~DiabeticDiet, name = "Diabetic Diet", line = list(color = "green"))
+plot <- plot %>% add_trace(y = ~LowCarbDiet, name = "Low Carbohydrate Diet", line = list(color = "purple"))
+plot <- plot %>% add_trace(y = ~LowFatDiet, name = "Low Fat or Low Cholesterol Diet", line = list(color = "orange"))
+
+plot <- plot %>% layout(title = "Special Diets Among Adults in the US from 2007 to 2018",
+                         xaxis = list(title = "Survey Period"),
+                         yaxis = list(title = "Percentage(%)"))
+
+plot
+
+
+```
+
+Visualization #3:
+Justin - Histogram (flipped axis) of healthcare spending in the U.S. vs other countries
+Data: World Health Organization Global Health Expenditure database (http://apps.who.int/nha/database).
+
+Current health expenditure per capita (current US$)
+Current expenditures on health per capita in current US dollars. Estimates of current health expenditures include healthcare goods and services consumed during each year.
+
+
+```{r}
+library(dplyr)
+library(readr)
+
+capita_health_expenditure <- read_csv("/Users/justin/Downloads/capita_health_expenditure.csv", skip = 4)
+
+capita_us_expenditure <- capita_health_expenditure %>%
+  dplyr::filter(`Country Name` == "United States") %>%
+  dplyr::select(`Country Name`, `2019`)
+
+capita_top10_expenditure <- capita_health_expenditure %>%
+  dplyr::arrange(desc(`2019`)) %>%
+  dplyr::filter(!(`Country Name` %in% c("United States", "North America", "Post-demographic dividend", "High income"))) %>%
+  head(10) %>%
+  dplyr::select(`Country Name`, `2019`)
+
+# Combine US and Top 10 datasets
+combined_data <- rbind(capita_us_expenditure, capita_top10_expenditure)
+
+# Sort combined_data in descending order of the 2019 column
+sorted_combined_data <- combined_data %>%
+  dplyr::arrange(desc(`2019`))
+
+library(RColorBrewer)
+library(plotly)
+
+# Get a color palette with as many colors as there are unique countries in sorted_combined_data
+n_colors <- n_distinct(sorted_combined_data$`Country Name`)
+color_palette <- colorRampPalette(brewer.pal(9, "Set1"))(n_colors)
+
+# Create a named color vector that maps each country to a unique color
+colors <- setNames(color_palette, unique(sorted_combined_data$`Country Name`))
+
+# Create interactive plot
+plot <- plot_ly(data = sorted_combined_data,
+                y = ~`Country Name`,
+                x = ~`2019`,
+                type = "bar",
+                orientation = "h",
+                name = "Healthcare Spending",
+                marker = list(color = ~colors[`Country Name`])) %>%
+  layout(title = "Healthcare Spending in the U.S. vs Other Countries in 2019",
+         xaxis = list(title = "Healthcare Expenditure per Capita in US$ (2019)"),
+         yaxis = list(title = "Country Name",
+                      categoryorder = "array",
+                      categoryarray = rev(sorted_combined_data$`Country Name`)))
+
+plot
+
+
+
+```
+
+
+Shiny app
+
+```{r}
+
+
+# Load required packages
+install.packages("shiny")
+install.packages("htmltools")
+
+library(shiny)
+
+ui <- fluidPage(
+  titlePanel("Healthcare Spending in the U.S. vs Other Countries (2000-2019)"),
+  
+  sidebarLayout(
+    sidebarPanel(
+      sliderInput("year",
+                  "Select Year:",
+                  min = 2000,
+                  max = 2019,
+                  value = 2019,
+                  step = 1)
+    ),
+    
+    mainPanel(
+      plotlyOutput("healthcare_spending_plot")
+    )
+  )
+)
+
+
+library(shiny)
+library(plotly)
+library(dplyr)
+library(readr)
+library(RColorBrewer)
+
+server <- function(input, output) {
+  output$healthcare_spending_plot <- renderPlotly({
+    
+    # Read data and filter based on the selected year
+    year <- as.character(input$year)
+    
+    capita_health_expenditure <- read_csv("/Users/justin/Downloads/capita_health_expenditure.csv", skip = 4)
+    capita_us_expenditure <- capita_health_expenditure %>%
+      dplyr::filter(`Country Name` == "United States") %>%
+      dplyr::select(`Country Name`, !!year)
+    
+    capita_top10_expenditure <- capita_health_expenditure %>%
+      dplyr::arrange(desc(!!year)) %>%
+      dplyr::filter(!(`Country Name` %in% c("United States", "North America", "Post-demographic dividend", "High income"))) %>%
+      head(10) %>%
+      dplyr::select(`Country Name`, !!year)
+    
+    combined_data <- rbind(capita_us_expenditure, capita_top10_expenditure)
+    sorted_combined_data <- combined_data %>%
+      dplyr::arrange(desc(!!year))
+    
+    n_colors <- n_distinct(sorted_combined_data$`Country Name`)
+    color_palette <- colorRampPalette(brewer.pal(9, "Set1"))(n_colors)
+    colors <- setNames(color_palette, unique(sorted_combined_data$`Country Name`))
+    
+    plot <- plot_ly(data = sorted_combined_data,
+                    y = ~`Country Name`,
+                    x = ~!!year,
+                    type = "bar",
+                    orientation = "h",
+                    name = "Healthcare Spending",
+                    marker = list(color = ~colors[`Country Name`])) %>%
+      layout(title = paste0("Healthcare Spending in the U.S. vs Other Countries in ", input$year),
+             xaxis = list(title = paste0("Healthcare Expenditure per Capita in US$ (", input$year, ")")),
+             yaxis = list(title = "Country Name",
+                          categoryorder = "array",
+                          categoryarray = rev(sorted_combined_data$`Country Name`)))
+    
+    return(plot)
+  })
+}
+
+```
+
+Current health expenditure (% of GDP)
+Level of current health expenditure expressed as a percentage of GDP.  Estimates of current health expenditures include healthcare goods and services consumed during each year. This indicator does not include capital health expenditures such as buildings, machinery, IT and stocks of vaccines for emergency or outbreaks.
+
+```{r}
+library(dplyr)
+library(readr)
+
+GDP_health_expenditure <- read_csv("/Users/justin/Downloads/GDP_health_expenditure.csv", skip = 4)
+
+GDP_us_expenditure <- GDP_health_expenditure %>%
+  dplyr::filter(`Country Name` == "United States") %>%
+  dplyr::select(`Country Name`, `2019`)
+
+GDP_top10_expenditure <- GDP_health_expenditure %>%
+  dplyr::arrange(desc(`2019`)) %>%
+  dplyr::filter(!(`Country Name` %in% c("United States", "North America", "Post-demographic dividend", "OECD members", "High income"))) %>%
+  head(10) %>%
+  dplyr::select(`Country Name`, `2019`)
+
+# Combine US and Top 10 datasets
+combined_data <- rbind(GDP_us_expenditure, GDP_top10_expenditure)
+
+# Sort combined_data in descending order of the 2019 column
+sorted_combined_data <- combined_data %>%
+  dplyr::arrange(desc(`2019`))
+
+library(RColorBrewer)
+library(plotly)
+
+# Get a color palette with as many colors as there are unique countries in sorted_combined_data
+n_colors <- n_distinct(sorted_combined_data$`Country Name`)
+color_palette <- colorRampPalette(brewer.pal(9, "Set1"))(n_colors)
+
+# Create a named color vector that maps each country to a unique color
+colors <- setNames(color_palette, unique(sorted_combined_data$`Country Name`))
+
+# Create interactive plot
+plot <- plot_ly(data = sorted_combined_data,
+                y = ~`Country Name`,
+                x = ~`2019`,
+                type = "bar",
+                orientation = "h",
+                name = "Healthcare Spending",
+                marker = list(color = ~colors[`Country Name`])) %>%
+  layout(title = "Healthcare Spending in the U.S. vs Other Countries as % of GDP in 2019",
+         xaxis = list(title = "Healthcare Expenditure as % of GDP (2019)"),
+         yaxis = list(title = "Country Name",
+                      categoryorder = "array",
+                      categoryarray = rev(sorted_combined_data$`Country Name`)))
+
+plot
+
+
+
+```
+
+Data for Percentage of adults aged 20 and over on any special diet on a given day, by sex and age: United States 2015-2018
+
+```{r}
+# Load required libraries
+library(plotly)
+
+# Create data frame
+diet_data <- data.frame(
+  Age_group = c("20 and over", "20-39", "40-59", "60 and over"),
+  Men = c(15.1, 10.8, 17.6, 17.7),
+  Women = c(19.0, 15.8, 20.7, 20.7)
+)
+
+# Create pyramid graph
+pyramid_graph <- plot_ly() %>%
+  add_trace(x = -diet_data$Men, y = diet_data$Age_group, type = "bar", orientation = "h", name = "Men") %>%
+  add_trace(x = diet_data$Women, y = diet_data$Age_group, type = "bar", orientation = "h", name = "Women") %>%
+  layout(title = "Percentage of Adults on Any Special Diet by Sex and Age from 2015 to 2018",
+         xaxis = list(title = "Percentage(%)", tickvals = seq(-20, 20, 5), ticktext = abs(seq(-20, 20, 5))),
+         yaxis = list(title = "Age Group"),
+         barmode = 'overlay',
+         showlegend = TRUE)
+
+# Display pyramid graph
+pyramid_graph
+
+```
+
+
+Data table for Figure 2. Percentage of adults aged 20 and over
+on any special diet on a given day, by race and Hispanic origin,
+weight status, and educational attainment: United States,
+2015–2018
+
+
+```{r}
+# Load libraries
+library(plotly)
+
+# Create data frame
+characteristics_data <- data.frame(
+  Characteristic = factor(c("Non-Hispanic white", "Non-Hispanic black", "Non-Hispanic Asian", "Hispanic",
+                     "Normal or underweight", "Overweight", "Obesity",
+                     "Less than high school education", "High school education or some college", "College graduate or higher"),
+                     levels = c("Non-Hispanic white", "Non-Hispanic black", "Non-Hispanic Asian", "Hispanic",
+                                "Normal or underweight", "Overweight", "Obesity",
+                                "Less than high school education", "High school education or some college", "College graduate or higher")),
+  Percent = c(17.8, 14.7, 14.9, 16.4, 8.3, 17.1, 23.1, 14.1, 17.0, 18.6)
+)
+
+# Create colors vector
+color_vector <- c(rep("rgba(50, 115, 220, 0.7)", 4), rep("rgba(220, 50, 50, 0.7)", 3), rep("rgba(50, 220, 50, 0.7)", 3))
+
+# Create horizontal bar graph
+bar_graph <- plot_ly(data = characteristics_data,
+                     y = ~Characteristic,
+                     x = ~Percent,
+                     type = "bar",
+                     orientation = "h",
+                     marker = list(color = color_vector)) %>%
+  layout(title = "Percentage of Adults on Any Special Diet by Multiple Characteristics from 2015 to 2018",
+         xaxis = list(title = "Percentage(%)"),
+         yaxis = list(title = "Characteristic", categoryorder = "array", categoryarray = c("Non-Hispanic white", "Non-Hispanic black", "Non-Hispanic Asian", "Hispanic",
+                                "Normal or underweight", "Overweight", "Obesity",
+                                "Less than high school education", "High school education or some college", "College graduate or higher")))
+
+# Display horizontal bar graph
+bar_graph
+
+
+```
+
+
+Data for Percentage of adults aged 20 and over on most common special diets on a given day, by age: United States,
+2015–2018
+
+```{r}
+# Load libraries
+library(plotly)
+
+# Create data frame
+age_diet_data <- data.frame(
+  AgeGroup = factor(c(rep("20 and over", 4), rep("20–39", 4), rep("40–59", 4), rep("60 and over", 4))),
+  DietType = factor(c("Weight loss or low calorie", "Diabetic", "Low carbohydrate", "Low fat or low cholesterol",
+                      "Weight loss or low calorie", "Low carbohydrate", "Low fat or low cholesterol", "Weight gain",
+                      "Weight loss or low calorie", "Diabetic", "Low carbohydrate", "Low fat or low cholesterol",
+                      "Weight loss or low calorie", "Diabetic", "Low sodium", "Low fat or low cholesterol")),
+  Percent = c(9.3, 2.3, 2.0, 1.8, 8.9, 1.3, 0.9, 0.7, 10.1, 2.4, 2.3, 2.0, 8.9, 4.7, 3.0, 2.7)
+)
+
+# Create colors vector
+color_vector <- c("rgba(50, 115, 220, 0.7)", "rgba(220, 50, 50, 0.7)", "rgba(50, 220, 50, 0.7)", "rgba(220, 220, 50, 0.7)")
+
+# Initialize plotly object
+bar_graph <- plot_ly()
+
+# Add traces for each age group and special diet type
+for (i in 1:nrow(age_diet_data)) {
+  bar_graph <- bar_graph %>%
+    add_trace(data = age_diet_data[i, ],
+              y = ~DietType,
+              x = ~Percent,
+              type = "bar",
+              orientation = "h",
+              name = as.character(age_diet_data$AgeGroup[i]),
+              legendgroup = as.character(age_diet_data$AgeGroup[i]),
+              marker = list(color = color_vector[as.numeric(age_diet_data$AgeGroup[i])]),
+              showlegend = ifelse(age_diet_data$DietType[i] == "Weight loss or low calorie", TRUE, FALSE))
+}
+
+# Set layout
+bar_graph <- bar_graph %>%
+  layout(title = "Percentage of Adults on Special Diets by Age Group and Diet Type from 2015 to 2018",
+         xaxis = list(title = "Percentage(%)"),
+         yaxis = list(title = "Special Diet Type", categoryorder = "array", categoryarray = levels(age_diet_data$DietType)),
+         barmode = "group")
+
+# Display horizontal bar graph
+bar_graph
+
+
+
+
+```
+
+Same dataset, but different format
+
+```{r}
+
+# Load libraries
+library(plotly)
+
+# Create data frame
+age_diet_data <- data.frame(
+  AgeGroup = factor(c(rep("20 and over", 4), rep("20–39", 4), rep("40–59", 4), rep("60 and over", 4))),
+  DietType = factor(c("Weight loss or low calorie", "Diabetic", "Low carbohydrate", "Low fat or low cholesterol",
+                      "Weight loss or low calorie", "Low carbohydrate", "Low fat or low cholesterol", "Weight gain",
+                      "Weight loss or low calorie", "Diabetic", "Low carbohydrate", "Low fat or low cholesterol",
+                      "Weight loss or low calorie", "Diabetic", "Low sodium", "Low fat or low cholesterol")),
+  Percent = c(9.3, 2.3, 2.0, 1.8, 8.9, 1.3, 0.9, 0.7, 10.1, 2.4, 2.3, 2.0, 8.9, 4.7, 3.0, 2.7)
+)
+
+# Create colors vector
+color_vector <- c("rgba(50, 115, 220, 0.7)", "rgba(220, 50, 50, 0.7)", "rgba(50, 220, 50, 0.7)", "rgba(220, 220, 50, 0.7)")
+
+# Initialize plotly object
+bar_graph <- plot_ly()
+
+# Add traces for each age group
+for (i in 1:4) {
+  bar_graph <- bar_graph %>%
+    add_trace(data = age_diet_data[age_diet_data$AgeGroup == levels(age_diet_data$AgeGroup)[i], ],
+              y = ~DietType,
+              x = ~Percent,
+              type = "bar",
+              orientation = "h",
+              name = levels(age_diet_data$AgeGroup)[i],
+              marker = list(color = color_vector[i]),
+              legendgroup = levels(age_diet_data$AgeGroup)[i],
+              showlegend = ifelse(i == 1, TRUE, FALSE))
+}
+
+# Set layout
+bar_graph <- bar_graph %>%
+  layout(title = "Percentage of Adults on Special Diets by Age Group and Diet Type from 2015 to 2018",
+         xaxis = list(title = "Percentage(%)"),
+         yaxis = list(title = "Special Diet Type", categoryorder = "array", categoryarray = levels(age_diet_data$DietType)),
+         barmode = "stack")
+
+# Display horizontal bar graph
+bar_graph
+
+```
+
+
+Visualization #4:
+Justin - Education - How it starts with you (Foods’ nutritional information)
+Dataframe: searchable data table that shows the most popular food, the types of food, processed vs. unprocessed, and its respective calories
+Data:https://www.kaggle.com/datasets/niharika41298/nutrition-details-for-most-common-foods
+
+```{r}
+library(dplyr)
+library(DT)
+library(shiny)
+library(RColorBrewer)
+
+# Read the data
+df <- read.csv("/Users/justin/Downloads/nutrients_new.csv", header = FALSE, skip = 2)
+
+# Rename columns
+colnames(df) <- c("Food Name", "Measure", "Grams", "Calories(kcal)", "Protein(g)", "Fat(g)", "Saturated Fat(g)", "Fiber(g)",
+                 "Carbohydrates(g)", "Category")
+
+# Format numeric columns
+df_formatted <- df %>%
+  mutate(across(where(is.numeric), round, 2))
+
+# Create a color palette for the categories
+unique_categories <- unique(df_formatted$Category)
+color_palette <- colorRampPalette(brewer.pal(9, "Set1"))(length(unique_categories))
+names(color_palette) <- unique_categories
+
+# Apply the category colors to the dataframe
+df_formatted$CategoryColor <- color_palette[df_formatted$Category]
+
+# Create an interactive table using DT
+datatable(df_formatted[, -which(names(df_formatted) == "CategoryColor")], # remove the "CategoryColor" column
+          options = list(pageLength = 10, dom = 'Bfrtip', buttons = c('csv', 'excel', 'pdf', 'print')),
+          rownames = FALSE,
+          caption = tags$caption(tags$style(HTML("caption {font-size: 1.5em; font-weight: bold;}")),
+                                 "Nutrient Data for Various Foods"),
+          extensions = c('Buttons')) %>%
+  formatStyle(names(df_formatted)[-which(names(df_formatted) == "CategoryColor")], # remove the "CategoryColor" column from names(df_formatted)
+              fontWeight = styleEqual(names(df_formatted)[-which(names(df_formatted) == "CategoryColor")], "bold"),
+              backgroundColor = styleEqual(names(df_formatted)[-which(names(df_formatted) == "CategoryColor")], "lightblue")) %>%
+  formatStyle("Food Name",
+              color = "black",
+              fontWeight = "bold") %>%
+  formatStyle(1:nrow(df_formatted), # color the entire row based on the "CategoryColor" column
+              backgroundColor = styleEqual(df_formatted$CategoryColor, df_formatted$CategoryColor),
+              include = TRUE)
+```
