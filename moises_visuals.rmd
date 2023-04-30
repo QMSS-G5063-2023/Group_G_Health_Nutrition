@@ -1,0 +1,622 @@
+---
+title: "Moises Visuals"
+author: "Moises Escobar"
+date: "2023-04-22"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load packages
+```{r, message = F, warning = F}
+library(readxl)
+library(dplyr)
+library(ggplot2)
+library(ggthemes)
+library(geojsonio)
+library(leaflet)
+```
+
+## Read-in data
+```{r}
+centiment <- read_excel("centiment_survey.xlsx")
+analysis <- read_excel("survey_analysis.xlsx")
+states <- geojsonio::geojson_read("https://rstudio.github.io/leaflet/json/us-states.geojson",
+                                  what = "sp")
+obesity_11 <- read_excel("state_obesity_11.xlsx")
+obesity_12 <- read_excel("state_obesity_12.xlsx")
+obesity_13 <- read_excel("state_obesity_13.xlsx")
+obesity_14 <- read_excel("state_obesity_14.xlsx")
+obesity_15 <- read_excel("state_obesity_15.xlsx")
+obesity_16 <- read_excel("state_obesity_16.xlsx")
+obesity_17 <- read_excel("state_obesity_17.xlsx")
+obesity_18 <- read_excel("state_obesity_18.xlsx")
+obesity_19 <- read_excel("state_obesity_19.xlsx")
+obesity_20 <- read_excel("state_obesity_20.xlsx")
+obesity_21 <- read_excel("state_obesity_21.xlsx")
+```
+
+Sources: Survey of the U.S. population completed through the Centiment online
+survey service in April 2023. The data set includes demographic information,
+knowledge-based questions, and consumption habit questions for 423 observations.
+
+## Prepare data
+```{r}
+# EDA
+lbs_to_kg <- 2.20462
+in_to_ft <- 12
+in_to_m <- 39.3701
+cent_final <- centiment %>%
+  mutate(weight_kg = `Weight (in pounds)` / lbs_to_kg,
+         height_ft = as.numeric(`Height (in feet and inches) Feet`),
+         height_in = as.numeric(`Height (in feet and inches) Inches`),
+         height_m = (height_ft * in_to_ft + height_in) / in_to_m,
+         bmi = weight_kg / height_m^2) %>%
+  cbind(analysis)
+
+# U.S. Map 2011
+states@data <- cbind(states@data, obesity_11)
+states_11 <- states 
+
+# U.S. Map 2012
+states@data <- cbind(states@data, obesity_12)
+states_12 <- states
+
+# U.S. Map 2013
+states@data <- cbind(states@data, obesity_13)
+states_13 <- states
+
+# U.S. Map 2014
+states@data <- cbind(states@data, obesity_14)
+states_14 <- states
+
+# U.S. Map 2015
+states@data <- cbind(states@data, obesity_15)
+states_15 <- states
+
+# U.S. Map 2016
+states@data <- cbind(states@data, obesity_16)
+states_16 <- states
+
+# U.S. Map 2017
+states@data <- cbind(states@data, obesity_17)
+states_17 <- states
+
+# U.S. Map 2018
+states@data <- cbind(states@data, obesity_18)
+states_18 <- states
+
+# U.S. Map 2019
+states@data <- cbind(states@data, obesity_19)
+states_19 <- states
+
+# U.S. Map 2020
+states@data <- cbind(states@data, obesity_20)
+states_20 <- states
+
+# U.S. Map 2021
+states@data <- cbind(states@data, obesity_21)
+states_21 <- states
+```
+
+
+## EDA
+```{r, message = F, warning = F}
+cent_final %>% ggplot(aes(x = bmi)) +
+  geom_histogram() +
+  geom_vline(xintercept = 18.5, linetype="dashed", color = "blue", size=1.5) +
+  geom_vline(xintercept = 24.9, linetype="dashed", color = "blue", size=1.5) +
+  theme_stata()
+
+income_ranges <- c("Less than $40,000", "$40,000-74,000", "75,000-99,000",
+                   "$100,000-149,000", "150,000-249,000", "250,000+")
+
+cent_final %>% ggplot(aes(x = factor(`Household income`, income_ranges))) +
+  geom_bar() +
+  theme_stata() +
+  theme(axis.text.x = element_text(angle = 30, vjust = 0.5))
+```
+
+## Visual 3 - BMI
+```{r, message = F, warning = F}
+cent_final %>% ggplot(aes(x = bmi)) +
+  geom_histogram() +
+  facet_wrap(~Age) +
+  theme_stata()
+
+cent_final %>% ggplot(aes(x = bmi)) +
+  geom_histogram() +
+  facet_wrap(~Gender) +
+  theme_stata()
+
+cent_final %>% ggplot(aes(x = bmi)) +
+  geom_histogram() +
+  facet_wrap(~Ethnicity) +
+  theme_stata()
+
+cent_final %>% ggplot(aes(x = bmi)) +
+  geom_histogram() +
+  facet_wrap(~Education) +
+  theme_stata()
+
+cent_final %>% ggplot(aes(x = bmi)) +
+  geom_histogram() +
+  facet_wrap(~`Household income`) +
+  theme_stata()
+```
+
+## Visual 3 - Knowledge quiz
+```{r, message = F, warning = F}
+knowledge_levels <- c("Fail", "Moderate", "Satisfactory", "Excellent")
+
+cent_final %>% ggplot(aes(x = factor(`Knowledge Level`, knowledge_levels))) +
+  geom_bar() +
+  facet_wrap(~Age) +
+  theme_stata() +
+  theme(axis.text.x = element_text(angle = 30, vjust = 0.5))
+
+cent_final %>% ggplot(aes(x = factor(`Knowledge Level`, knowledge_levels))) +
+  geom_bar() +
+  facet_wrap(~Gender) +
+  theme_stata() +
+  theme(axis.text.x = element_text(angle = 30, vjust = 0.5))
+
+cent_final %>% ggplot(aes(x = factor(`Knowledge Level`, knowledge_levels))) +
+  geom_bar() +
+  facet_wrap(~Ethnicity) +
+  theme_stata() +
+  theme(axis.text.x = element_text(angle = 30, vjust = 0.5))
+
+cent_final %>% ggplot(aes(x = factor(`Knowledge Level`, knowledge_levels))) +
+  geom_bar() +
+  facet_wrap(~Education) +
+  theme_stata() +
+  theme(axis.text.x = element_text(angle = 30, vjust = 0.5))
+
+cent_final %>% ggplot(aes(x = factor(`Knowledge Level`, knowledge_levels))) +
+  geom_bar() +
+  facet_wrap(~`Household income`) +
+  theme_stata() +
+  theme(axis.text.x = element_text(angle = 30, vjust = 0.5))
+```
+
+## Visual 3 - Consumption habits
+```{r, message = F, warning = F}
+consumption_habits <- c("Fail", "Moderate", "Satisfactory", "Excellent")
+
+cent_final %>% ggplot(aes(x = factor(`Consumption habits`, consumption_habits))) +
+  geom_bar() +
+  facet_wrap(~Age) +
+  theme_stata() +
+  theme(axis.text.x = element_text(angle = 30, vjust = 0.5))
+
+cent_final %>% ggplot(aes(x = factor(`Consumption habits`, consumption_habits))) +
+  geom_bar() +
+  facet_wrap(~Gender) +
+  theme_stata() +
+  theme(axis.text.x = element_text(angle = 30, vjust = 0.5))
+
+cent_final %>% ggplot(aes(x = factor(`Consumption habits`, consumption_habits))) +
+  geom_bar() +
+  facet_wrap(~Ethnicity) +
+  theme_stata() +
+  theme(axis.text.x = element_text(angle = 30, vjust = 0.5))
+
+cent_final %>% ggplot(aes(x = factor(`Consumption habits`, consumption_habits))) +
+  geom_bar() +
+  facet_wrap(~Education) +
+  theme_stata() +
+  theme(axis.text.x = element_text(angle = 30, vjust = 0.5))
+
+cent_final %>% ggplot(aes(x = factor(`Consumption habits`, consumption_habits))) +
+  geom_bar() +
+  facet_wrap(~`Household income`) +
+  theme_stata() +
+  theme(axis.text.x = element_text(angle = 30, vjust = 0.5))
+```
+
+## Visual 4
+```{r}
+cent_final_pp <- cent_final %>%
+  filter(Gender == c("Male","Female")) %>%
+  group_by(Age, Gender) %>%
+  summarize(mean_bmi = mean(bmi, na.rm = T)) %>%
+  mutate(final_mean_bmi = case_when(Gender == "Male" ~ mean_bmi,
+                                    Gender == "Female"  ~ mean_bmi * -1))
+
+  ggplot(cent_final_pp,
+         aes(x = Age,
+               y = final_mean_bmi,
+               fill = Gender)) +
+  geom_bar(data = filter(cent_final_pp,
+                         Gender == "Male"),
+           stat = "identity") +
+  geom_bar(data = filter(cent_final_pp,
+                         Gender == "Female"),
+           stat = "identity") +
+  scale_y_continuous(breaks=seq(-30,30,10)) + coord_flip() +
+  ggtitle("Pyramid Plot of BMI by Gender and Age Group") +
+  labs(x = "", y = "") +
+  theme_bw() +
+  theme(panel.border = element_blank(),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(colour = "black"), 
+        text = element_text(family = "serif"))
+```
+
+## Visual 5
+```{r}
+bins <- c(20, 23, 26, 29, 32, 35, 38, 41, 44)
+pal <- colorBin("YlOrRd", domain = states$obesity_11, bins = bins)
+
+# 2011
+labels_11 <- sprintf(
+  "<strong>%s</strong><br/>%g percent",
+  states_11@data$name, states_11@data$obesity_11
+) %>% lapply(htmltools::HTML)
+
+o_11 <- leaflet(states_11) %>%
+  setView(-96, 37.8, 4) %>%
+  addProviderTiles("MapBox", options = providerTileOptions(
+    id = "mapbox.light",
+    accessToken = Sys.getenv('MAPBOX_ACCESS_TOKEN'))) %>%
+  addPolygons(
+    fillColor = ~pal(obesity_11),
+    weight = 2,
+    opacity = 1,
+    color = "white",
+    dashArray = "3",
+    fillOpacity = 0.7,
+    highlightOptions = highlightOptions(
+      weight = 5,
+      color = "#666",
+      dashArray = "",
+      fillOpacity = 0.7,
+      bringToFront = TRUE),
+    label = labels_11,
+    labelOptions = labelOptions(
+      style = list("font-weight" = "normal", padding = "3px 8px"),
+      textsize = "15px",
+      direction = "auto")) %>%
+  addLegend(pal = pal, values = ~obesity_11, opacity = 0.7, title = NULL,
+    position = "bottomright")
+o_11
+
+# 2012
+labels_12 <- sprintf(
+  "<strong>%s</strong><br/>%g percent",
+  states_12$name, states_12$obesity_12
+) %>% lapply(htmltools::HTML)
+
+o_12 <- leaflet(states_12) %>%
+  setView(-96, 37.8, 4) %>%
+  addProviderTiles("MapBox", options = providerTileOptions(
+    id = "mapbox.light",
+    accessToken = Sys.getenv('MAPBOX_ACCESS_TOKEN'))) %>%
+  addPolygons(
+    fillColor = ~pal(obesity_12),
+    weight = 2,
+    opacity = 1,
+    color = "white",
+    dashArray = "3",
+    fillOpacity = 0.7,
+    highlightOptions = highlightOptions(
+      weight = 5,
+      color = "#666",
+      dashArray = "",
+      fillOpacity = 0.7,
+      bringToFront = TRUE),
+    label = labels_12,
+    labelOptions = labelOptions(
+      style = list("font-weight" = "normal", padding = "3px 8px"),
+      textsize = "15px",
+      direction = "auto")) %>%
+  addLegend(pal = pal, values = ~obesity_12, opacity = 0.7, title = NULL,
+    position = "bottomright")
+o_12
+
+# 2013
+labels_13 <- sprintf(
+  "<strong>%s</strong><br/>%g percent",
+  states_13$name, states_13$obesity_13
+) %>% lapply(htmltools::HTML)
+
+o_13 <- leaflet(states_13) %>%
+  setView(-96, 37.8, 4) %>%
+  addProviderTiles("MapBox", options = providerTileOptions(
+    id = "mapbox.light",
+    accessToken = Sys.getenv('MAPBOX_ACCESS_TOKEN'))) %>%
+  addPolygons(
+    fillColor = ~pal(obesity_13),
+    weight = 2,
+    opacity = 1,
+    color = "white",
+    dashArray = "3",
+    fillOpacity = 0.7,
+    highlightOptions = highlightOptions(
+      weight = 5,
+      color = "#666",
+      dashArray = "",
+      fillOpacity = 0.7,
+      bringToFront = TRUE),
+    label = labels_13,
+    labelOptions = labelOptions(
+      style = list("font-weight" = "normal", padding = "3px 8px"),
+      textsize = "15px",
+      direction = "auto")) %>%
+  addLegend(pal = pal, values = ~obesity_13, opacity = 0.7, title = NULL,
+    position = "bottomright")
+o_13
+
+# 2014
+labels_14 <- sprintf(
+  "<strong>%s</strong><br/>%g percent",
+  states_14$name, states_14$obesity_14
+) %>% lapply(htmltools::HTML)
+
+o_14 <- leaflet(states_14) %>%
+  setView(-96, 37.8, 4) %>%
+  addProviderTiles("MapBox", options = providerTileOptions(
+    id = "mapbox.light",
+    accessToken = Sys.getenv('MAPBOX_ACCESS_TOKEN'))) %>%
+  addPolygons(
+    fillColor = ~pal(obesity_14),
+    weight = 2,
+    opacity = 1,
+    color = "white",
+    dashArray = "3",
+    fillOpacity = 0.7,
+    highlightOptions = highlightOptions(
+      weight = 5,
+      color = "#666",
+      dashArray = "",
+      fillOpacity = 0.7,
+      bringToFront = TRUE),
+    label = labels_14,
+    labelOptions = labelOptions(
+      style = list("font-weight" = "normal", padding = "3px 8px"),
+      textsize = "15px",
+      direction = "auto")) %>%
+  addLegend(pal = pal, values = ~obesity_14, opacity = 0.7, title = NULL,
+    position = "bottomright")
+o_14
+
+# 2015
+labels_15 <- sprintf(
+  "<strong>%s</strong><br/>%g percent",
+  states_15$name, states_15$obesity_15
+) %>% lapply(htmltools::HTML)
+
+o_15 <- leaflet(states_15) %>%
+  setView(-96, 37.8, 4) %>%
+  addProviderTiles("MapBox", options = providerTileOptions(
+    id = "mapbox.light",
+    accessToken = Sys.getenv('MAPBOX_ACCESS_TOKEN'))) %>%
+  addPolygons(
+    fillColor = ~pal(obesity_15),
+    weight = 2,
+    opacity = 1,
+    color = "white",
+    dashArray = "3",
+    fillOpacity = 0.7,
+    highlightOptions = highlightOptions(
+      weight = 5,
+      color = "#666",
+      dashArray = "",
+      fillOpacity = 0.7,
+      bringToFront = TRUE),
+    label = labels_15,
+    labelOptions = labelOptions(
+      style = list("font-weight" = "normal", padding = "3px 8px"),
+      textsize = "15px",
+      direction = "auto")) %>%
+  addLegend(pal = pal, values = ~obesity_15, opacity = 0.7, title = NULL,
+    position = "bottomright")
+o_15
+
+# 2016
+labels_16 <- sprintf(
+  "<strong>%s</strong><br/>%g percent",
+  states_16$name, states_16$obesity_16
+) %>% lapply(htmltools::HTML)
+
+o_16 <- leaflet(states_16) %>%
+  setView(-96, 37.8, 4) %>%
+  addProviderTiles("MapBox", options = providerTileOptions(
+    id = "mapbox.light",
+    accessToken = Sys.getenv('MAPBOX_ACCESS_TOKEN'))) %>%
+  addPolygons(
+    fillColor = ~pal(obesity_16),
+    weight = 2,
+    opacity = 1,
+    color = "white",
+    dashArray = "3",
+    fillOpacity = 0.7,
+    highlightOptions = highlightOptions(
+      weight = 5,
+      color = "#666",
+      dashArray = "",
+      fillOpacity = 0.7,
+      bringToFront = TRUE),
+    label = labels_16,
+    labelOptions = labelOptions(
+      style = list("font-weight" = "normal", padding = "3px 8px"),
+      textsize = "15px",
+      direction = "auto")) %>%
+  addLegend(pal = pal, values = ~obesity_16, opacity = 0.7, title = NULL,
+    position = "bottomright")
+o_16
+
+# 2017
+labels_17 <- sprintf(
+  "<strong>%s</strong><br/>%g percent",
+  states_17$name, states_17$obesity_17
+) %>% lapply(htmltools::HTML)
+
+o_17 <- leaflet(states_17) %>%
+  setView(-96, 37.8, 4) %>%
+  addProviderTiles("MapBox", options = providerTileOptions(
+    id = "mapbox.light",
+    accessToken = Sys.getenv('MAPBOX_ACCESS_TOKEN'))) %>%
+  addPolygons(
+    fillColor = ~pal(obesity_17),
+    weight = 2,
+    opacity = 1,
+    color = "white",
+    dashArray = "3",
+    fillOpacity = 0.7,
+    highlightOptions = highlightOptions(
+      weight = 5,
+      color = "#666",
+      dashArray = "",
+      fillOpacity = 0.7,
+      bringToFront = TRUE),
+    label = labels_17,
+    labelOptions = labelOptions(
+      style = list("font-weight" = "normal", padding = "3px 8px"),
+      textsize = "15px",
+      direction = "auto")) %>%
+  addLegend(pal = pal, values = ~obesity_17, opacity = 0.7, title = NULL,
+    position = "bottomright")
+o_17
+
+# 2018
+labels_18 <- sprintf(
+  "<strong>%s</strong><br/>%g percent",
+  states_18$name, states_18$obesity_18
+) %>% lapply(htmltools::HTML)
+
+o_18 <- leaflet(states_18) %>%
+  setView(-96, 37.8, 4) %>%
+  addProviderTiles("MapBox", options = providerTileOptions(
+    id = "mapbox.light",
+    accessToken = Sys.getenv('MAPBOX_ACCESS_TOKEN'))) %>%
+  addPolygons(
+    fillColor = ~pal(obesity_18),
+    weight = 2,
+    opacity = 1,
+    color = "white",
+    dashArray = "3",
+    fillOpacity = 0.7,
+    highlightOptions = highlightOptions(
+      weight = 5,
+      color = "#666",
+      dashArray = "",
+      fillOpacity = 0.7,
+      bringToFront = TRUE),
+    label = labels_18,
+    labelOptions = labelOptions(
+      style = list("font-weight" = "normal", padding = "3px 8px"),
+      textsize = "15px",
+      direction = "auto")) %>%
+  addLegend(pal = pal, values = ~obesity_18, opacity = 0.7, title = NULL,
+    position = "bottomright")
+o_18
+
+# 2019
+labels_19 <- sprintf(
+  "<strong>%s</strong><br/>%g percent",
+  states_19$name, states_19$obesity_19
+) %>% lapply(htmltools::HTML)
+
+o_19 <- leaflet(states_19) %>%
+  setView(-96, 37.8, 4) %>%
+  addProviderTiles("MapBox", options = providerTileOptions(
+    id = "mapbox.light",
+    accessToken = Sys.getenv('MAPBOX_ACCESS_TOKEN'))) %>%
+  addPolygons(
+    fillColor = ~pal(obesity_19),
+    weight = 2,
+    opacity = 1,
+    color = "white",
+    dashArray = "3",
+    fillOpacity = 0.7,
+    highlightOptions = highlightOptions(
+      weight = 5,
+      color = "#666",
+      dashArray = "",
+      fillOpacity = 0.7,
+      bringToFront = TRUE),
+    label = labels_19,
+    labelOptions = labelOptions(
+      style = list("font-weight" = "normal", padding = "3px 8px"),
+      textsize = "15px",
+      direction = "auto")) %>%
+  addLegend(pal = pal, values = ~obesity_19, opacity = 0.7, title = NULL,
+    position = "bottomright")
+o_19
+
+# 2020
+labels_20 <- sprintf(
+  "<strong>%s</strong><br/>%g percent",
+  states_20$name, states_20$obesity_20
+) %>% lapply(htmltools::HTML)
+
+o_20 <- leaflet(states_20) %>%
+  setView(-96, 37.8, 4) %>%
+  addProviderTiles("MapBox", options = providerTileOptions(
+    id = "mapbox.light",
+    accessToken = Sys.getenv('MAPBOX_ACCESS_TOKEN'))) %>%
+  addPolygons(
+    fillColor = ~pal(obesity_20),
+    weight = 2,
+    opacity = 1,
+    color = "white",
+    dashArray = "3",
+    fillOpacity = 0.7,
+    highlightOptions = highlightOptions(
+      weight = 5,
+      color = "#666",
+      dashArray = "",
+      fillOpacity = 0.7,
+      bringToFront = TRUE),
+    label = labels_20,
+    labelOptions = labelOptions(
+      style = list("font-weight" = "normal", padding = "3px 8px"),
+      textsize = "15px",
+      direction = "auto")) %>%
+  addLegend(pal = pal, values = ~obesity_20, opacity = 0.7, title = NULL,
+    position = "bottomright")
+o_20
+
+# 2021
+labels_21 <- sprintf(
+  "<strong>%s</strong><br/>%g percent",
+  states_21$name, states_21$obesity_21
+) %>% lapply(htmltools::HTML)
+
+o_21 <- leaflet(states_21) %>%
+  setView(-96, 37.8, 4) %>%
+  addProviderTiles("MapBox", options = providerTileOptions(
+    id = "mapbox.light",
+    accessToken = Sys.getenv('MAPBOX_ACCESS_TOKEN'))) %>%
+  addPolygons(
+    fillColor = ~pal(obesity_21),
+    weight = 2,
+    opacity = 1,
+    color = "white",
+    dashArray = "3",
+    fillOpacity = 0.7,
+    highlightOptions = highlightOptions(
+      weight = 5,
+      color = "#666",
+      dashArray = "",
+      fillOpacity = 0.7,
+      bringToFront = TRUE),
+    label = labels_21,
+    labelOptions = labelOptions(
+      style = list("font-weight" = "normal", padding = "3px 8px"),
+      textsize = "15px",
+      direction = "auto")) %>%
+  addLegend(pal = pal, values = ~obesity_21, opacity = 0.7, title = NULL,
+    position = "bottomright")
+o_21
+```
+
+```{r}
+# gganimate (add a thicker border along regions to highlight regional disparities)
+```
+
