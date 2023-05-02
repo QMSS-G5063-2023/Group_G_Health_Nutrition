@@ -1,0 +1,155 @@
+---
+title: "DV Final"
+author: "Kexu Duan"
+date: "4/17/2023"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+install.packages("countrycode")
+```
+
+Visualization #1: Life expectancy vs healthcare spend
+
+Source:OECD Health Statistics, https://www.oecd-ilibrary.org/social-issues-migration-health/data/oecd-health-statistics_health-data-en
+
+The dataset contains information on the life expectancy and healthcare spending of 40 countries. The variables included are the name and code of each country, life expectancy in years, and total healthcare expenditure as a percentage of GDP. The data was sourced from the World Health Organization and contains information from 2015. A scatterplot was created to visualize the relationship between healthcare spending and life expectancy. The plot shows that there is a positive correlation between the two variables, with countries that spend more on healthcare generally having higher life expectancies. The plot also highlights the United States as an outlier, with relatively high healthcare spending but a lower life expectancy compared to other countries with similar levels of spending.
+
+
+```{r}
+# Create the ggplot object
+library(plotly)
+library(countrycode)
+library(tidyverse)
+library(lubridate)
+library(readxl)
+library(dplyr)
+library(ggplot2)
+library(ggthemes)
+library(ggimage)
+
+# Import dataset
+life <- read_excel("~/Desktop/812013161P1G003.XLS", 
+    sheet = "Data1.1.3", skip = 6)
+life <- life[c(-4,-6)]
+names(life) <- c("country","code","life_expectancy","Health_spending")
+life <- na.omit(life)
+life$country_name <- countrycode(life$code, "iso2c", "country.name")
+
+# Create a vector of country codes to label
+selected_countries <- c("US", "CN", "GB", "FR", "MX", "BR", "ZA")
+
+# Create the ggplot object
+p <- ggplot(life, aes(x = Health_spending, y = life_expectancy)) +
+  geom_point(color = "red", shape = 17, size = 3) +
+  labs(title = "Relationship between Healthcare Spending and Life Expectancy",
+       x = "Total Healthcare Expenditure",
+       y = "Life Expectancy (years)") +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.title = element_text(face = "bold"),
+        axis.text = element_text(size = 10),
+        legend.position = "bottom",
+        legend.title = element_text(face = "bold"),
+        legend.text = element_text(size = 10)) +
+  geom_smooth(se = FALSE, color = "black") +
+  
+  #Add flag icon to the selected countries
+  geom_flag(data = life[life$code %in% selected_countries,], aes(image = code), size = 0.03)
+
+# Display the plot
+print(p)
+```
+From the scatterplot, it can be observed that the United States is an outlier with respect to the amount of money spent on healthcare compared to its life expectancy. It spends a significantly higher percentage of its GDP on healthcare but has a lower life expectancy compared to other countries with similar healthcare expenditures. This highlights the need for further analysis to understand the factors that are contributing to this difference in healthcare outcomes.
+
+
+Visualization #2: Food consumption expenditures (not included on the website)
+
+This dataset includes global food price index and price index for different food categories from 1990 to 2022. The dataset has 7 variables:
+
+Date: The date in the format of month/year.
+Food.Price.Index: The global food price index that represents the overall trend of food prices.
+Meat: The price index for meat, which reflects the change in meat prices over time.
+Dairy: The price index for dairy products, which reflects the change in dairy product prices over time.
+Cereals: The price index for cereals, which reflects the change in cereal prices over time.
+Oils: The price index for oils, which reflects the change in oil prices over time.
+Sugar: The price index for sugar, which reflects the change in sugar prices over time.
+The unit of the dataset is percentage, which represents the percentage change of the price index for each month compared to the baseline month.
+
+You can download the food prices year by year dataset from Kaggle using the following link:
+
+https://www.kaggle.com/thedevastator/food-prices-year-by-year
+
+```{r}
+library(tidyverse)
+foods <- read.table("FAOFP1990_2022.csv")
+library(lubridate)
+# Convert the year column to a date format
+foods$Date <- dmy(foods$Date)
+
+# Convert wide format to long format
+foods_long <- pivot_longer(foods, 
+                           cols = -Date, 
+                           names_to = "Food_Group", 
+                           values_to = "Price")
+
+# Create line plot of food prices over time
+ggplot(foods_long, aes(x = Date, y = Price, color = Food_Group)) +
+  geom_line(size = 1) +
+  scale_x_date(date_labels = "%Y", date_breaks = "2 years") +
+  labs(x = NULL, y = "Price (USD)", 
+       title = "Changes in Food Prices over Time",
+       color = "Food Group") +
+  theme_classic() +
+  theme(plot.title = element_text(hjust = 0.5),
+        legend.position = "bottom",
+        legend.title = element_text(face = "bold"),
+        legend.text = element_text(size = 10),
+        axis.text = element_text(size = 10),
+        axis.title = element_text(size = 12, face = "bold"))
+```
+The plot shows the changes in food prices over time from January 1990 to December 2022 in the United States. The data is grouped by food category, including meat, dairy, cereals, oils, and sugar, and plotted using a line chart with different colors for each category.
+
+From the plot, it is worth noting that the plot shows food price changes from January 1990 to December 2022, and the impact of the COVID-19 pandemic on food prices may not be fully reflected in the data. However, it is not surprising that food prices, particularly for oils, have increased during the pandemic as the global supply chain has been disrupted, leading to higher transportation and production costs.
+
+While the plot shows that oil prices have been relatively stable over the years, it is possible that recent events, including the pandemic and geopolitical tensions, have contributed to the sharp rise in oil prices. These factors can affect both the supply and demand of oil, leading to higher prices.
+
+
+Visualization #3: Favorite Fast food restaurants Word Cloud
+
+To demonstrate the challenges to healthier diets, I created a world cloud to show American's favorite fast food restaurant.
+
+```{r}
+# Load libraries
+library(tidyverse)
+library(stringr)
+library(wordcloud2)
+
+# Read the dataset
+data <- read.csv("~/Desktop/US_Fast_Food_Restaurants - Sheet1.csv")
+
+# Clean and preprocess the names
+data_clean <- data %>%
+  mutate(name = str_to_lower(name)) %>%
+  mutate(name = str_replace_all(name, "[[:punct:]]", "")) %>%
+  mutate(name = str_trim(name))
+
+# Calculate the word frequencies
+word_freq <- data_clean %>%
+  count(name, sort = TRUE)
+
+# Add percentage for restaurant count
+word_freq <- word_freq %>%
+  mutate(percentage = (n / sum(n)) * 100)
+
+# Combine restaurant name and percentage
+word_freq <- word_freq %>%
+  mutate(word = paste0(name, " (", round(percentage, 2), "%)"))
+
+# Create interactive word cloud
+wordcloud2(data = word_freq, size = 0.5, color = "random-light", backgroundColor = "white")
+```
+
