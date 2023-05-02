@@ -1,0 +1,192 @@
+---
+title: "Potential solutions (Tab #3)-Leo's Part"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Data Import
+
+```{r}
+fruits_per_capita_availability <- read.csv('/Users/leoli/Downloads/Leo Part/Fruits_Per capita availability adjusted for loss.csv')
+
+vegetables_per_capita_availability <- read.csv('/Users/leoli/Downloads/Leo Part/Vegetables_Per capita availability adjusted for loss.csv')
+
+cheese_n_redmeat_per_capita_availability <- read.csv('/Users/leoli/Downloads/Leo Part/Cheese_n_RedMeat_Per capita availability adjusted for loss.csv')
+
+national_school_lunch <- read.csv("//Users/leoli/Downloads/Leo Part/NATIONAL SCHOOL LUNCH PROGRAM.csv")
+
+national_school_lunch_by_year <- read.csv("/Users/leoli/Downloads/Leo Part/NATIONAL SCHOOL LUNCH PROGRAM By Year.csv")
+
+child_n_adult_care_food <- read.csv("/Users/leoli/Downloads/Leo Part/CHILD AND ADULT CARE FOOD PROGRAM.csv")
+
+child_n_adult_care_food_by_year <- read.csv("/Users/leoli/Downloads/Leo Part/CHILD AND ADULT CARE FOOD PROGRAM_by_year.csv")
+
+```
+
+# Library
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+```
+
+# Fruits & Vegetables Availability Per Capita in US
+
+```{r}
+  fruits_per_capita_availability %>%
+  left_join(vegetables_per_capita_availability, by = 'Year') %>%
+  select('Year','Lbs.year.x','Lbs.year.y') %>%
+  rename('fruits'='Lbs.year.x', 'vegetables' = 'Lbs.year.y') %>%
+  left_join(cheese_n_redmeat_per_capita_availability, by = 'Year') %>%
+  ggplot(aes(x = Year)) +
+  geom_line(aes(y = fruits, color = "fruits")) +
+  geom_line(aes(y = vegetables, color = "vegetables")) +
+  geom_line(aes(y = cheese, color = "cheese")) +
+  geom_line(aes(y = red.meat, color = "red.meat")) +
+  xlab("Year") +
+  ylab("Lbs per capita") +
+  scale_color_manual(values = c("fruits" = "blue", "vegetables" = "green", "cheese" = "pink", "red.meat" = "red")) +
+  ggtitle("Food Availability per Capita over the Years")
+
+```
+
+Does not shows a good trends
+
+# Government Sponser Program
+
+## National School Lunch
+
+### Feeding the Future with Healthy School Lunches
+
+The National School Lunch Program (NSLP) is a federally assisted meal program operating in public and nonprofit private schools and residential child care institutions. It provides nutritionally balanced, low-cost or free lunches to children each school day. The program was established under the National School Lunch Act, signed by President Harry Truman in 1946.
+
+### By Year
+
+```{r}
+national_school_lunch_by_year$Total.Lunches.Served..millions. <- as.numeric(national_school_lunch_by_year$Total.Lunches.Served..millions.)
+
+national_school_lunch_by_year$Percent.Free.RP <- as.numeric(national_school_lunch_by_year$Percent.Free.RP)
+
+```
+
+```{r}
+national_school_lunch_by_year %>%
+  ggplot(aes(x = Year)) +
+  geom_col(aes(y = Total.Lunches.Served..millions., fill = "Total Lunches")) +
+  geom_line(aes(y = Percent.Free.RP*40, color = "Percent Free/Reduced"), size = 1.2) +
+  xlab("Year") +
+  ylab("Total Lunches Served (millions)") +
+  scale_y_continuous(sec.axis = sec_axis(~ . / 40, name = "% Free/Reduced")) +
+  ggtitle("National School Lunch By Year") +
+  scale_fill_manual(values = "skyblue") +
+  scale_color_manual(values = "orange") +
+  theme(legend.title = element_blank()) +
+  theme(panel.background = element_blank(),
+        panel.grid.major = element_line(colour = "gray", size = 0.5),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(colour = "black"),
+        axis.title.y.right = element_text(size = 14, color = "orange"),
+        axis.title.y.left = element_text(size = 14, color = "skyblue"))
+
+```
+
+### By State
+
+```{r}
+us_states <- map_data("state")
+national_school_lunch$state <- tolower(national_school_lunch$state)
+
+participation_map <- merge(us_states, national_school_lunch, by.x = "region", by.y = "state")
+participation_map$X2022 <- as.numeric(participation_map$X2022)
+participation_map$Percent.Change <- as.numeric(participation_map$Percent.Change)
+
+```
+
+#### Number of Children Participate in 2022
+
+```{r}
+ggplot(participation_map, aes(x = long, y = lat, group = group, fill = X2022)) +
+  geom_polygon() +
+  scale_fill_gradient(low = "white", high = "green") +
+  theme_void()
+```
+
+#### Percentage of Change of Children Participate From 2018 to Jan 2022
+
+```{r}
+ggplot(participation_map, aes(x = long, y = lat, group = group, fill = Percent.Change)) +
+  geom_polygon() +
+  scale_fill_gradient(low = "blue", high = "green") +
+  theme_void()
+```
+
+## Child and Adult Care Food
+
+### Ensuring Children and Adults Have Access to Nutritious Meals and Snacks
+
+The Child and Adult Care Food Program (CACFP) is a federal program that provides reimbursements for nutritious meals and snacks to eligible children and adults who are enrolled for care at participating child care centers, day care homes, and adult day care centers. CACFP also provides reimbursements for meals served to children and youth participating in afterschool care programs, children residing in emergency shelters, and adults over the age of 60 or living with a disability and enrolled in day care facilities. CACFP contributes to the wellness, healthy growth, and development of young children and adults in the United States.
+
+### By Year
+
+```{r}
+child_n_adult_care_food_by_year$Total.Meals.Served..millions. <- as.numeric(child_n_adult_care_food_by_year$Total.Meals.Served..millions.)
+
+child_n_adult_care_food_by_year$Percent.Free.RP <- as.numeric(child_n_adult_care_food_by_year$Percent.Free.RP)
+
+```
+
+```{r}
+child_n_adult_care_food_by_year %>%
+  ggplot(aes(x = Year)) +
+  geom_col(aes(y = Total.Meals.Served..millions., fill = "Total Lunches")) +
+  geom_line(aes(y = Percent.Free.RP*20, color = "Percent Free/Reduced"), size = 1.2) +
+  xlab("Year") +
+  ylab("Total Lunches Served (millions)") +
+  scale_y_continuous(sec.axis = sec_axis(~ . / 20, name = "% Free/Reduced")) +
+  ggtitle("National School Lunch By Year") +
+  scale_fill_manual(values = "skyblue") +
+  scale_color_manual(values = "orange") +
+  theme(legend.title = element_blank()) +
+  theme(panel.background = element_blank(),
+        panel.grid.major = element_line(colour = "gray", size = 0.5),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(colour = "black"),
+        axis.title.y.right = element_text(size = 14, color = "orange"),
+        axis.title.y.left = element_text(size = 14, color = "skyblue"))
+
+```
+
+### By State
+
+```{r}
+child_n_adult_care_food$state <- tolower(child_n_adult_care_food$state)
+
+participation_map2 <- merge(us_states, child_n_adult_care_food, by.x = "region", by.y = "state")
+participation_map2$X2022 <- as.numeric(participation_map$X2022)
+participation_map2$Percent.Change <- as.numeric(participation_map$Percent.Change)
+
+```
+
+#### Averge Daily Participants in 2022
+
+```{r}
+ggplot(participation_map2, aes(x = long, y = lat, group = group, fill = X2022)) +
+  geom_polygon() +
+  scale_fill_gradient(low = "white", high = "green") +
+  theme_void()
+```
+
+#### Percentage of Change of Averge Daily Participants From 2018 to Jan 2022
+
+```{r}
+ggplot(participation_map2, aes(x = long, y = lat, group = group, fill = Percent.Change)) +
+  geom_polygon() +
+  scale_fill_gradient(low = "blue", high = "green") +
+  theme_void()
+```
