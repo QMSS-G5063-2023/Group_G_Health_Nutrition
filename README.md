@@ -16,6 +16,9 @@ jk3938@columbia.edu
 **Yiwei Li**
 yl5063@columbia.edu
 
+
+Feedback presentation: [Group_G_Feedback_Presentation.zip](https://github.com/QMSS-G5063-2023/Group_G_Health_Nutrition/files/11380309/Group_G_Feedback_Presentation.zip)
+
 Brief description:
 
 Our group hopes to use the skills developed from this Data Visualization course to focus a narrative pertaining to the health and nutrition data in the United States. We intend to explore and visually represent: 
