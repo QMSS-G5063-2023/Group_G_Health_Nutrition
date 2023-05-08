@@ -16,7 +16,18 @@ jk3938@columbia.edu
 **Yiwei Li**
 yl5063@columbia.edu
 
+* [`Final Project Website`](https://raw.githack.com/QMSS-G5063-2023/Group_G_Health_Nutrition/main/Final_Project/Group-G-Health---Nutrition-Final-Project.html) <br>
+* 
+* [`Final Project Website RMarkdown`](https://github.com/QMSS-G5063-2023/Group_G_Health_Nutrition/blob/main/Final_Project/Group%20G%20Health%20%26%20Nutrition%20Final%20Project.Rmd) <br>
+* 
+* [`Process book`](https://github.com/QMSS-G5063-2023/Group_D_Child_Poverty/blob/main/Process%20book/logseq_Process_book.png) <br>
+* 
+* [`Feedback presentation`](https://github.com/QMSS-G5063-2023/Group_G_Health_Nutrition/files/11380309/Group_G_Feedback_Presentation.zip) <br>
+* 
+* [`Datasets`](https://github.com/QMSS-G5063-2023/Group_G_Health_Nutrition/tree/main/Final_Project/data)
+
 Final Project Website: https://raw.githack.com/QMSS-G5063-2023/Group_G_Health_Nutrition/main/Final_Project/Group-G-Health---Nutrition-Final-Project.html
+
 Final Project Website RMarkdown: https://github.com/QMSS-G5063-2023/Group_G_Health_Nutrition/blob/main/Final_Project/Group%20G%20Health%20%26%20Nutrition%20Final%20Project.Rmd
 
 Final Project Website Data: https://github.com/QMSS-G5063-2023/Group_G_Health_Nutrition/tree/main/Final_Project/data
