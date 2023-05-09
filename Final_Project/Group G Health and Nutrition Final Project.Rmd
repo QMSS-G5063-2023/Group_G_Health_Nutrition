@@ -1,0 +1,584 @@
+---
+title: "Group G Health & Nutrition Website"
+author: "Moises Escobar, Justin Ko, Kexu Duan, Yiwei Li"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    toc: true
+    sidebar: true
+    collapsed: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE, warning = FALSE, error = FALSE, message=FALSE)
+
+# Load all packages
+library(readxl)
+library(dplyr)
+library(ggplot2)
+library(ggthemes)
+library(geojsonio)
+library(leaflet)
+library(DT)
+library(shiny)
+library(RColorBrewer)
+library(readr)
+library(leaflet.extras)
+library(sf)
+library(plotly)
+library(tidyverse)
+library(lubridate)
+library(stringr)
+library(wordcloud2)
+library(countrycode)
+library(ggimage)
+library(htmltools)
+library(hrbrthemes)
+library(ggrepel)
+library(tibble)
+library(maps)
+library(mapdata)
+library(statebins)
+library(datasets)
+library(ggraph)
+library(igraph)
+library(scatterD3)
+library(wordcloud2) 
+library(transformr)
+```
+
+
+```{r include=FALSE}
+centiment <- read_excel("data/centiment_survey.xlsx")
+analysis <- read_excel("data/survey_analysis.xlsx")
+states <- geojsonio::geojson_read("https://rstudio.github.io/leaflet/json/us-states.geojson",
+                                  what = "sp")
+
+
+obesity_11 <- read_excel("data/state_obesity_11.xlsx")
+obesity_12 <- read_excel("data/state_obesity_12.xlsx")
+obesity_13 <- read_excel("data/state_obesity_13.xlsx")
+obesity_14 <- read_excel("data/state_obesity_14.xlsx")
+obesity_15 <- read_excel("data/state_obesity_15.xlsx")
+obesity_16 <- read_excel("data/state_obesity_16.xlsx")
+obesity_17 <- read_excel("data/state_obesity_17.xlsx")
+obesity_18 <- read_excel("data/state_obesity_18.xlsx")
+obesity_19 <- read_excel("data/state_obesity_19.xlsx")
+obesity_20 <- read_excel("data/state_obesity_20.xlsx")
+obesity_21 <- read_excel("data/state_obesity_21.xlsx")
+
+# EDA
+lbs_to_kg <- 2.20462
+in_to_ft <- 12
+in_to_m <- 39.3701
+cent_final <- centiment %>%
+  mutate(weight_kg = `Weight (in pounds)` / lbs_to_kg,
+         height_ft = as.numeric(`Height (in feet and inches) Feet`),
+         height_in = as.numeric(`Height (in feet and inches) Inches`),
+         height_m = (height_ft * in_to_ft + height_in) / in_to_m,
+         bmi = weight_kg / height_m^2) %>%
+  cbind(analysis)
+
+# merge all obesity data together 
+obesity_12 %>%
+  full_join(obesity_11, by = c('name'='State')) -> obesity_df
+
+#put all data frames into list
+df_list <- list(obesity_df, obesity_13, obesity_14, obesity_15, obesity_16, 
+                obesity_17, obesity_18, obesity_19, obesity_20, obesity_21)
+
+#merge all data frames in list
+df_list %>% reduce(full_join, by='name') %>%
+  mutate(name = str_to_title(name))-> obesity_df 
+
+# merge with states together 
+map_data('state') %>%
+  mutate(region = str_to_title(region)) %>%
+  full_join(obesity_df, by=c('region' = 'name')) -> obesity_df
+
+```
+
+
+
+
+## Introduction
+
+Welcome to our Data Visualization final project on health and nutrition in the United States! This is an important issue with consequences that impact every one of us and we are excited to shed some light on it. According to Harvard’s T.H. Chan School of Public Health, 69% of Americans are overweight or obese. This is a striking statistic and we believe that by raising awareness for this issue through our analysis, we can help to facilitate a conversation that will lead to actionable change.
+
+This project is divided into three sections: (1) The Current Problem, (2) Challenges to Healthier Diets, and (3) Potential Solutions.
+
+## Current Problem
+
+### Obesity Heat Map Between 2011 - 2021 
+
+The animated plot of the U.S. below show heat maps of yearly obesity percentages 
+by state across the country. Our heat maps show data from 2011 to 2021. 
+As the years progress in the animation, it is clear that obesity is getting worse 
+across the country over time. In 2011, most states had at least 20% of the 
+population as considered obeses -- by 2011, we see that most states are shaded 
+in the darkest red, indicating a shocking 40% obesity rate. Additionally, we can 
+see regional disparities in health: States in the South have far greater rates of 
+obesity than states on the West coast or in New England. These visuals show the 
+distribution and the severity of this health issue across the country.
+
+```{r}
+p <- obesity_df %>%
+  pivot_longer(obesity_12:obesity_21, names_to ='year', values_to='obesity') %>%
+  mutate(year = as.numeric(paste0("20", str_replace(year, "obesity_", "")))) %>%
+  ggplot(aes(x=long, y=lat, fill=obesity, group=group, frame=year)) + 
+  geom_polygon(color = "white") + 
+  theme_minimal() + 
+  theme(axis.title.x=element_blank(), axis.text.x=element_blank(), axis.ticks.x=element_blank(),
+        axis.title.y=element_blank(), axis.text.y=element_blank(), axis.ticks.y=element_blank()) + 
+  labs(fill = '% Obesity') + 
+  scale_fill_gradient(low='#ffffb2', high = '#bd0026') + 
+  coord_fixed(1.3) + 
+  ggtitle('Percentage of Obesity by State for {current_frame}') +
+  gganimate::transition_manual(year)
+
+gganimate::animate(p)
+```
+
+
+### BMI of Americans
+
+To better understand the distribution of most Americans’ BMI, we used a survey of the U.S. population completed through the Centiment online survey service in April 2023. The data set included demographic information (including height and weight), knowledge-based questions, and consumption habit questions for 423 observations.
+
+BMI or ‘Body Mass Index’ is a tool that healthcare providers use to estimate the amount of body fat by using height and weight measurements. It can help assess risk factors for certain health conditions. With the height and weight information provided by survey respondents, we calculated BMI for each of them and plotted the distribution. We find that less than a third of respondents are in the healthy range between 18.5 and 24.9 (29.5%), with the majority lying beyond the healthy range.
+
+
+```{r, fig.width=8, fig.height=6}
+ggplot(data=cent_final, aes(x = bmi)) +
+  geom_histogram(fill='#848884', color='black', binwidth = 5) + # add color argument
+  annotate("rect", fill = "darkgreen", alpha = 0.6, 
+        xmin = 18.5, xmax = 24.9,
+        ymin = 0, ymax = 124) + 
+  geom_label(aes(x=17, y=48, label="Healthy Range")) + 
+  theme_minimal() + 
+  labs(x = 'BMI', y='Count', title="Histogram of respondents' BMI") +
+  scale_y_continuous(breaks = seq(0, max(hist(cent_final$bmi, plot = FALSE)$counts), by = 10), 
+                     limits = c(0, 130)) +
+  scale_x_continuous(breaks = seq(10, 60, by = 10)) +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.y = element_line(color = "gray")
+  )
+
+```
+
+Data: Survey of the U.S. population completed through the Centiment online
+survey service in April 2023. The data set includes demographic information,
+knowledge-based questions, and consumption habit questions for 423 observations.
+
+Below, we have added an interactive table where you can follow the height and weight axes to estimate your BMI and see where you land on the distribution. Staying informed about your health is the first step to ensuring that you stay in good shape!
+
+## Interactive BMI Table
+
+```{r, fig.width=8, fig.height=5}
+weight <- seq(120, 320, 10)
+height <- seq(58, 77, 1)
+
+data.frame(height = rep(height, each= length(weight)), 
+           weight = rep(weight, times=length(height))) %>%
+  mutate(bmi= weight*703/(height^2)) -> bmi_df
+
+bmi_df %>%
+  mutate(category = case_when(
+    bmi < 18.5 ~ 'Underweight',
+    bmi < 25.0 ~ 'Healthy',
+    bmi < 30 ~ 'Overweight', 
+    bmi < 40 ~ 'Obese',
+    TRUE ~ 'Severely Obese'
+  ), 
+  category = factor(category, levels = c(
+    'Underweight', 'Healthy',
+    'Overweight', 'Obese', 'Severely Obese')),
+  feet = floor(height / 12),
+  inches = height - (12 * feet), 
+  height_label = paste0(feet, "'", inches, '"')) -> bmi_df
+
+
+bmi_df %>% 
+  mutate(height_label = factor(height_label, 
+                               levels=unique(bmi_df$height_label))) -> bmi_df
+
+p <- ggplot(bmi_df, aes(x = factor(weight), y = height_label, fill = category,
+                    text = paste('Weight:', factor(weight), 'lbs',
+                                 '<br>Height: ', height_label,
+                                 '<br>BMI: ', round(bmi),
+                                 '<br>Category:', category)), alpha=0.8) + 
+  geom_tile(color='black', linewidth=0.5) + 
+  geom_text(aes(label = round(bmi)), size=3) + 
+  scale_y_discrete(limits=rev) +
+  labs(x = 'Weight (lbs)', y = 'Height', fill = '') +
+  scale_fill_manual(breaks = levels(bmi_df$category),
+                    values = c("#4781A7", "#589A5D", "#B3AF38", "#B27D58", "#A75051")) + 
+  theme(legend.position="bottom")
+
+ggplotly(p, tooltip='text')
+```
+
+## Challenges to Healthier Diets 
+
+### Fast Food Restaurants Across NYC
+
+The following is an interactive leaflet map illustrating the distribution of franchised fast food establishments throughout the five boroughs of New York City. Although the demographic composition of each borough varies by socioeconomic status (SES), the density of these chain restaurants appears to be relatively uniform across the city. These fast food outlets prioritize cost efficiency and are strategically situated to maximize accessibility and convenience, effectively permeating every city block. Prominent examples, such as McDonald’s and Subway, exemplify strategic store placement in key Manhattan locations to optimize their reach. This high level of accessibility to fast food keeps it constantly in consumers’ minds and makes it an easy choice for a quick meal.
+
+
+```{r}
+# Import dataset
+fastfood_df <- read_csv("data/US_Fast_Food_Restaurants - Sheet1.csv")
+
+# Filter data by specific state (e.g., New York) and latitude and longitude bounds
+fastfood_nyc_df <- fastfood_df %>%
+  filter(province == "NY" &
+         latitude >= 40.0 & latitude <= 41.0 &
+         longitude >= -75.5 & longitude <= -73.5) %>%
+ mutate(name = ifelse(name == "SUBWAY", "Subway", name))
+
+# Define a color palette based on the unique restaurant names
+color_palette <- colorFactor(palette = "viridis", domain = unique(fastfood_nyc_df$name))
+
+
+# Set the image URLs to the hosted images
+rests <- c("McDonald's", "Subway", "Dunkin' Donuts", "Burger King", "Taco Bell",
+           "KFC", "Boston Market", "Fuku", "Domino's Pizza", "Baskin-Robbins",
+           "Panera Bread", "Wendy's", "Chipotle Mexican Grill",
+           "Little Caesars Pizza", "Popeyes", "Five Guys", "Sbarro", "Git-It-N-Git",
+           "B. Good", "31st Avenue Gyro", "Arby's", "Smashburger", "White Castle",
+           "Kennedy Fried Chicken & Pizza", "Dairy Queen", "Blimpie", 
+           "Nathan's Famous", "Pizza Hut", "Papa John's Pizza", "Westchester Burger Company"
+           )
+
+urls <- c("https://upload.wikimedia.org/wikipedia/commons/5/50/McDonald%27s_SVG_logo.svg",
+          "https://1000logos.net/wp-content/uploads/2017/06/Subway-logo.png",
+          "https://i.pinimg.com/originals/5a/f4/2b/5af42b2e31010a24ac46d2cb5a0e60a6.png",
+          "https://upload.wikimedia.org/wikipedia/commons/8/85/Burger_King_logo_%281999%29.svg",
+          "https://1000logos.net/wp-content/uploads/2017/06/Taco-Bell-Logo-1024x640.png",
+          "https://1000logos.net/wp-content/uploads/2017/03/Kfc_logo-768x432.png",
+          "https://cdn.freebiesupply.com/logos/large/2x/boston-market-2-logo-png-transparent.png",
+          "https://eatfuku.com/wp-content/themes/fuku-3/images/logo.svg",
+          "https://1000logos.net/wp-content/uploads/2023/04/Dominos-logo.png",
+          "https://upload.wikimedia.org/wikipedia/commons/thumb/9/97/Baskin-Robbins_logo_2022.svg/2880px-Baskin-Robbins_logo_2022.svg.png",
+          "https://logos-download.com/wp-content/uploads/2016/11/Panera_Bread_logo_symbol.png",
+          "https://www.mashed.com/img/gallery/dont-believe-this-myth-about-the-wendys-logo/intro-1611697081.jpg",
+          "https://upload.wikimedia.org/wikipedia/en/thumb/3/3b/Chipotle_Mexican_Grill_logo.svg/1200px-Chipotle_Mexican_Grill_logo.svg.png",
+          "https://www.gaylordmichigan.net/wp-content/uploads/2017/06/Untitled-design-2023-03-22T114407.307.png",
+          "https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/Popeyes_logo.svg/1200px-Popeyes_logo.svg.png",
+          "https://dynl.mktgcdn.com/p/FIoFKEm46-afGyd-Yl2FKX-ma356Q63KQxQ-4kDqcng/1001x1001.png",
+          "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ef/Sbarro_logo.svg/1200px-Sbarro_logo.svg.png",
+          "https://media-cdn.grubhub.com/image/upload/d_search:browse-images:default.jpg/w_80,q_80,fl_lossy,dpr_2.0,c_fit,f_auto,h_80/w8jzu4c4zofnvdof6ssi",
+          "https://mma.prnewswire.com/media/558745/BGOOD_Logo.jpg?p=twitter",
+          "https://media-cdn.grubhub.com/image/upload/d_search:browse-images:default.jpg/w_80,q_80,fl_lossy,dpr_2.0,c_fit,f_auto,h_80/wopcjumnf4dvzvyj8tej",
+          "https://upload.wikimedia.org/wikipedia/commons/f/f4/Arby%27s_logo.svg",
+          "https://nmgprod.s3.amazonaws.com/media/files/79/8e/798ee36529dc2cdc121456549c0b0051/cover_image_1617194867.png.760x400_q85_crop_upscale.png",
+          "https://logodownload.org/wp-content/uploads/2021/05/white-castle-logo.png",
+          "https://media-cdn.grubhub.com/image/upload/d_search:browse-images:default.jpg/w_300,q_100,fl_lossy,dpr_2.0,c_fit,f_auto,h_300/iu3ttxzx4yppjmzszpct",
+          "https://cdn.lovesavingsgroup.com/logos/dq.png",
+          "https://searchvectorlogo.com/wp-content/uploads/2021/02/blimpie-americas-sub-shop-logo-vector.png",
+          "https://mms.businesswire.com/media/20221214005201/en/1663867/5/Nathan%27s_Famous_Logos-27.jpg",
+          "https://upload.wikimedia.org/wikipedia/sco/thumb/d/d2/Pizza_Hut_logo.svg/2177px-Pizza_Hut_logo.svg.png",
+          "https://cdn.freebiesupply.com/logos/large/2x/papa-johns-pizza-1-logo-svg-vector.svg",
+          "https://www.westchesterburger.com/stamford/images/logo.png"
+          )
+
+# make df of logos
+logo_df <- data.frame(name = rests, url = urls)
+# merge with main df and make image formatting 
+fastfood_nyc_df %>%
+  left_join(logo_df, by = "name") %>%
+  mutate(format = paste0('<img src="', 
+                         url, '" width="100px" height="100px">')) -> fastfood_nyc_df
+
+
+# Create Leaflet map with marker cluster option
+leaflet(fastfood_nyc_df) %>%
+  addTiles() %>%
+  addAwesomeMarkers(lng = ~longitude, lat = ~latitude,
+                    icon = ~awesomeIcons(
+                      icon = 'star',  # Choose an icon shape
+                      library = 'fa', # Choose an icon library
+                      markerColor = color_palette(fastfood_nyc_df$name) # Set marker color based on "name" column
+                    ),
+                    popup = paste("Name:", fastfood_nyc_df$name, "<br>",
+                                  "Address:", fastfood_nyc_df$address, "<br>",
+                                  "City:", fastfood_nyc_df$city, "<br>",
+                                  "Province:", fastfood_nyc_df$province, "<br>",
+                                  "Postal Code:", fastfood_nyc_df$postalCode, "<br>",
+                                  fastfood_nyc_df$format), # Add hosted image to the popup
+                    clusterOptions = markerClusterOptions()) %>%
+  setView(lng = -74.0060, lat = 40.7128, zoom = 10)  # Set initial map view to the center of New York City
+
+
+```
+
+Data: Fast Food Restaurants Across NYC | [Kaggle](https://www.kaggle.com/datasets/datafiniti/fast-food-restaurants)
+
+### Relationship between Healthcare Spending and Life Expectancy
+
+In the visual below, we remade a commonly depicted chart which shows how US healthcare expenditures per capita are far higher than other nations, even at similar levels of development. However, life expectancy is actually lower than some comparable Western European countries, like France and the United Kingdom. This diagram illustrates the inefficiency of healthcare spending in the United States and shows how even though there is a lot of money going through the healthcare system, Americans are not receiving the benefits of these expenditures.
+
+
+```{r}
+# Import dataset
+life <- read_excel("data/812013161P1G003.XLS", 
+                   sheet = "Data1.1.3", skip = 6)
+life <- life[c(-4,-6)]
+names(life) <- c("country","code","life_expectancy","Health_spending")
+life <- na.omit(life)
+life$country_name <- countrycode(life$code, "iso2c", "country.name")
+
+# Create a vector of country codes to label
+selected_countries <- c("US", "CN", "GB", "FR", "MX", "BR", "ZA")
+
+# Create the ggplot object
+ggplot(life, aes(x = Health_spending, y = life_expectancy)) +
+  geom_point(aes(size = Health_spending), color = "darkgreen", alpha = 0.7) +
+  labs(title = "Relationship between Healthcare Spending and Life Expectancy",
+       x = "Total Healthcare Expenditure",
+       y = "Life Expectancy (years)",
+       size = "Healthcare spending (in millions)") +
+  theme_minimal() +
+  #Add flag icon to the selected countries
+  geom_flag(data = life[life$code %in% selected_countries,], aes(image = code), size = 0.1) +
+  # Add labels with ggrepel
+  geom_text_repel(
+    data = life[life$code %in% selected_countries,],
+    aes(label = country_name),
+    color = "black",
+    size = 9/.pt, 
+    point.padding = 0.1, 
+    box.padding = 0.6,
+    min.segment.length = unit(0.1, "lines"),
+    max.overlaps = 1000,
+    seed = 7654 
+  ) 
+
+
+```
+
+## Potential Solutions
+
+### National School Lunch By Year
+
+Offering healthy school lunches is an excellent way to inculcate good eating habits in children at a young age. This is especially important since these are the habits that they will carry with them for the rest of their lives. This diagram shows a couple of key pieces of information. The first is that the total number of school lunches served has increased substantially since 1970 (2020 is an exception due to Covid-19). This shows the increased amount of funding going through school systems for nutrition and the opportunity that exists to set good habits at a young age. The second is that the percentage of lunches that are being offered at reduced prices, or that are entirely free, has also increased in this time period. Providing low-income students with access to the right food options is important since they are less likely to have access to healthy food options at home.
+
+```{r}
+national_school_lunch_by_year <- read_csv("data/NATIONAL SCHOOL LUNCH PROGRAM By Year.csv") %>%
+  mutate(total_lunches = as.numeric(`Total Lunches Served (millions)`),
+         percent_free = as.numeric(`Percent Free/RP`))
+
+national_school_lunch_by_year %>%
+  ggplot(aes(x = Year)) +
+  geom_col(data = . %>% filter(Year %% 5 == 0), # Filter data for every 5 years
+           aes(y = total_lunches, fill = "Total Lunches")) +
+  geom_line(aes(y = percent_free*40, color = "Percent Free/Reduced"), size = 1.2) +
+  xlab("Year") +
+  ylab("Total Lunches Served (millions)") +
+  scale_y_continuous(
+    sec.axis = sec_axis(~ . / 40, name = "Percentage of Free or Reduced Cost School Lunch (%)")
+  ) +
+  ggtitle("Statistics on National School Lunch By Year") +
+  scale_fill_manual(values = "darkgreen") +
+  scale_color_manual(values = "orange") +
+  theme(legend.title = element_blank()) +
+  theme(
+    panel.background = element_blank(),
+    panel.grid.major = element_line(colour = "gray", size = 0.5),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(colour = "black"),
+    axis.title.y.right = element_text(size = 14, color = "orange"),
+    axis.title.y.left = element_text(size = 14, color = "darkgreen")
+  ) +
+  scale_x_continuous(
+    breaks = seq(1940, 2022, by = 5) # Set year axis to intervals of 5 years
+  )
+
+
+```
+
+
+### Special Diets Among Adults Aged 20 and Over in the United States from 2007 to 2018
+
+The subsequent interactive line graph highlights the prevalence of various specialized diets among adults aged 20 and over in the United States from 2007 to 2018. The diets include Weight Loss or Low Calorie Diet, Diabetic Diet, Low Carbohydrate Diet, and Low Fat or Low Cholesterol Diet. Notably, the Weight Loss or Low Calorie Diet, which is often linked with plant-based diets, experienced the most significant increase among the four diets. The proportion of U.S. adults following this diet escalated from 7.5 percent in 2007 to 10 percent in 2018. The Diabetic Diet remained relatively stable over time, fluctuating from 1.8 percent to 2.2 percent, as diabetic patients typically adhere to physician-prescribed diets rather than electing to adopt such diets independently. Conversely, the Low Carbohydrate Diet witnessed a substantial increase from 0.9 percent to 2.2 percent over the decade. This diet’s popularity can be attributed to its association with numerous health benefits, such as controlling blood sugar levels and bolstering overall metabolic health. The commonly discussed Ketogenic (Keto) Diet and the Atkins Diet serve as prime examples of low carbohydrate diet plans. Lastly, the Low Fat or Low Cholesterol Diet observed a decline in its share of dietary options. The percentage of U.S. adults adhering to a low-fat diet decreased from 2.7 percent in 2007 to 1.5 percent in 2018, suggesting that this dietary approach may have lost its appeal due to its perceived ineffectiveness in helping individuals achieve their health goals.
+
+```{r}
+
+diet_data <- data.frame(
+  SurveyPeriod = c("2007–2008", "2009–2010", "2011–2012", "2013–2014", "2015–2016", "2017–2018"),
+  WeightLossDiet = c(7.5, 8.8, 8.8, 9.2, 8.7, 10),
+  DiabeticDiet = c(1.8, 2.4, 1.9, 2, 2.1, 2.2),
+  LowCarbDiet = c(0.9, 0.9, 0.9, 1.5, 1.7, 2.2),
+  LowFatDiet = c(2.7, 1.9, 1.6, 2.1, 1.9, 1.5)
+)
+
+plot_ly(data = diet_data, x = ~SurveyPeriod, y = ~WeightLossDiet,
+        type = "scatter", mode = "lines+markers", 
+        name = "Weight Loss or Low Calorie Diet", line = list(color = "red"),
+        marker = list(color="red")) %>% 
+  add_trace(y = ~DiabeticDiet, name = "Diabetic Diet", 
+            line = list(color = "darkgreen"),
+            marker = list(color="darkgreen")) %>% 
+  add_trace(y = ~LowCarbDiet, name = "Low Carbohydrate Diet", 
+            line = list(color = "royalblue"),
+            marker = list(color="royalblue")) %>% 
+  add_trace(y = ~LowFatDiet, name = "Low Fat or Low Cholesterol Diet", 
+            line = list(color = "orange"),
+            marker = list(color="orange"))  %>%
+  layout(title = "Special Diets Among Adults in the US from 2007 to 2018",
+         xaxis = list(title = "Survey Period"),
+         yaxis = list(title = "Percentage(%)"))
+
+```
+
+
+Data: Special Diets Among Adults: United States, 2015–2018 | [CDC](https://www.cdc.gov/nchs/products/databriefs/db389.htm)
+
+### Distribution of Dietary Habit Scores by Age Group
+
+The data for the visual below was derived from the dietary habits questionnaire in the Centiment survey described above. These answers were scored in terms of health and it became immediately clear that older age groups tended to eat healthier than younger ones. This is important because it informs policy with regard to how to target healthy eating campaigns. Moreover, younger individuals will take the habits they develop at a young age through the rest of their lives. Perhaps it makes sense that older individuals tend to eat healthier since they may be dealing with health conditions that force them to follow certain diets. However, the message that should be shared with younger generations is that they should develop the right eating habits now and use them as a preventative measure, rather than waiting to be affected by a health condition before starting to follow healthier consumption patterns.
+
+```{r}
+
+# Read the CSV file
+dh_df <- read.csv("data/df.csv")
+
+# Define custom color palette
+color_palette <- c('yellow','#B5E48C', '#52B69A', '#168AAD', '#184E77')
+
+# Create the plot
+p <- dh_df %>%
+  group_by(age) %>%
+  mutate(med_d = round(median(d_number_total),2)) %>%
+  ggplot(aes(x=age, y= d_number_total,
+             text = )) +
+  geom_boxplot(aes(fill = as.factor(age))) +  
+  scale_fill_manual(values = color_palette) + 
+  labs(fill = "Age Group", x = "Age Group", y= "Total Score",
+       title = "Distribution of Dietary Habit Scores by Age Group") +  
+  theme_minimal() +
+  geom_text(aes(x = age, y = med_d + 2, label= med_d),
+            size = 3) +
+  scale_y_continuous(
+    breaks = seq(0, 160, by = 20) 
+  )
+
+# Convert ggplot object to interactive plotly object
+ggplotly(p, tooltip="")
+
+
+
+```
+
+### Dietary Habits by Age Group
+
+We decided to dig deeper into the dietary habits by age group questions in the Centiment survey to better understand where it was that older generations stood out in terms of their food consumption. It became clear that Processed Snack Food and Sweetened Beverages were relatively similar across age groups, but where the older generations really stood out was in their very low consumption of Fast Food / Take-out and Pre-Made Meals. Perhaps this makes sense as older individuals are more likely to be retired and so they have more time to cook homemade meals. Healthy eating campaigns should stress the benefits of cooking at home to younger generations to help them develop this habit and hopefully improve their health as a result. Note how the high level of fast food accessibility (see visual above) makes this a significant challenge, especially in big cities.
+
+```{r}
+ppal <- c(
+'#B5E48C',
+'#52B69A',
+'#168AAD',
+'#184E77'
+)
+
+dh_df %>%
+  select(age:household_income, d2:d5) %>%
+  rename("Sweetened Beverages"= d2, "Pre-made Meals"= d3, "Fast Food / Take-out"= d4,
+         "Processed Snack Foods"= d5) %>%
+  pivot_longer(`Sweetened Beverages`: `Processed Snack Foods`, names_to = "question",
+               values_to = "response") %>%
+  mutate(response = factor(response, levels=c('At least once daily', '3 to 5 times a week',
+                                              '3 to 5 times a month', 'Once a month or less'))) %>%
+  ggplot(aes(x =age, fill = response)) +
+  geom_bar(position='fill') + 
+  theme_minimal() + 
+  facet_wrap(~question) +
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 10)) +
+  scale_fill_manual(values = ppal) + 
+  scale_y_continuous(labels = scales::percent) + 
+  labs(x = 'Age Group', y='Percentage', fill='Frequency',
+       title = 'Dietary Habits by Age Group')
+```
+
+### Datatable of Nutritional Information of the Most Common Food
+To emphasize the significance of health and nutrition literacy at an individual level, an interactive, searchable data table has been assembled, enabling users to identify and sort various food items based on their respective quantities, caloric content, protein, fat, saturated fat, fiber, carbohydrate levels, and other associated categories. Having comprehensive nutritional information is particularly beneficial to users adhering to specific fitness and dietary regimens tailored to their personal needs and preferences. The data frame also includes many ingredients that facilitate the creation of diverse and nutritious recipes. This resource serves as an invaluable tool for individuals hoping to make informed decisions in relation to personal dietary choices and overall health.
+
+
+
+```{r}
+# Read the data
+nutrient_df <- read.csv("data/nutrients_new.csv", header = FALSE, skip = 2)
+
+# Rename columns
+colnames(nutrient_df) <- c("Food Name", "Measure", "Grams", "Calories(kcal)", 
+                           "Protein(g)", "Fat(g)", "Saturated Fat(g)", "Fiber(g)",
+                           "Carbohydrates(g)", "Category")
+
+# Format numeric columns and consolidate categories 
+nutrient_df_formatted <- nutrient_df %>%
+  mutate(across(where(is.numeric), round, 2)) %>%
+  mutate(Category = str_trim(str_replace(Category, "F-P|A-F|A-E|R-Z|G-P|R-Z", "")))
+
+# Create an interactive table using DT
+datatable(nutrient_df_formatted, 
+          options = list(pageLength = 10, dom = 'Bfrtip',
+                         buttons = c('csv', 'excel', 'pdf', 'print')),
+          rownames = FALSE,
+          caption = tags$caption(tags$style(HTML("caption {font-size: 1.5em; font-weight: bold;}")),
+                                 "Nutrient Data for Various Foods"),
+          extensions = c('Buttons')) %>%
+  formatStyle(names(nutrient_df_formatted), # remove the "CategoryColor" column from names(df_formatted)
+              fontWeight = styleEqual(names(nutrient_df_formatted), "bold"),
+              backgroundColor = styleEqual(names(nutrient_df_formatted), "lightblue")) %>%
+  formatStyle("Food Name",
+              color = "black",
+              fontWeight = "bold") %>%
+    formatStyle('Category',
+                backgroundColor = styleEqual(
+                  unique(nutrient_df_formatted$Category),
+                  c( "#874F6F", "#3881B0", "#449B75",
+                             "#56A255","#7E6E85", "#AC5782", "#E3712B", 
+                             "#FFA10D", "#E1C62F","#B16C29", "#C66764","#CB8CAD")
+                             )
+                )
+```
+
+Data: Nutritional Facts for most common foods | [Kaggle](https://www.kaggle.com/datasets/niharika41298/nutrition-details-for-most-common-foods)
+
+## Process Codebook
+
+![](data/ProcessCodebook.jpg){#id .class width=200}
+
+
+## Authors
+
+### Justin Ko 
+
+Graduate School of Arts and Sciences - QMSS
+
+jk3938@columbia.edu
+
+<img src="data/justin.jpg" alt="Image caption" width="150" height="auto">
+
+### Moises Escobar 
+Graduate School of Arts and Sciences - QMSS
+
+me2801@columbia.edu
+
+<img src="data/moises.jpg" alt="Image caption" width="150" height="auto">
+
+### Kexu Duan 
+Graduate School of Arts and Sciences - QMSS
+
+kd2865@columbia.edu
+
+<img src="data/dora.jpg" alt="Image caption" width="150" height="auto">
+
+### Yiwei Li
+Graduate School of Arts and Sciences - QMSS
+
+yl5063@columbia.edu
+
+<img src="data/leo.jpg" alt="Image caption" width="150" height="auto">
